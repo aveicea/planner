@@ -1,5 +1,6 @@
 const NOTION_API_KEY = "secret_pNLmc1M6IlbkoiwoUrKnE2mzJlJGYZ61eppTt5tRZuR";
 const DATABASE_ID = "468bf987e6cd4372abf96a8f30f165b1";
+const CORS_PROXY = "https://corsproxy.io/?";
 
 let viewMode = 'timeline';
 let currentData = null;
@@ -152,7 +153,8 @@ window.duplicateTask = async function(taskId) {
       properties['우선순위'] = { select: { name: priority } };
     }
     
-    const response = await fetch('https://api.notion.com/v1/pages', {
+    const notionUrl = 'https://api.notion.com/v1/pages';
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -164,7 +166,7 @@ window.duplicateTask = async function(taskId) {
         properties: properties
       })
     });
-    
+
     if (!response.ok) throw new Error('복제 실패');
     
     setTimeout(() => fetchData(), 500);
@@ -243,7 +245,8 @@ window.deleteTask = async function(taskId) {
   loading.textContent = '⏳';
   
   try {
-    const response = await fetch(`https://api.notion.com/v1/pages/${taskId}`, {
+    const notionUrl = `https://api.notion.com/v1/pages/${taskId}`;
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -254,9 +257,9 @@ window.deleteTask = async function(taskId) {
         archived: true
       })
     });
-    
+
     if (!response.ok) throw new Error('삭제 실패');
-    
+
     setTimeout(() => fetchData(), 500);
   } catch (error) {
     alert('삭제 실패: ' + error.message);
@@ -363,7 +366,8 @@ window.confirmAddTask = async function() {
       };
     }
     
-    const response = await fetch('https://api.notion.com/v1/pages', {
+    const notionUrl = 'https://api.notion.com/v1/pages';
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -375,10 +379,10 @@ window.confirmAddTask = async function() {
         properties: properties
       })
     });
-    
+
     const result = await response.json();
     console.log('추가 결과:', result);
-    
+
     if (!response.ok) {
       throw new Error(result.message || '추가 실패');
     }
@@ -490,7 +494,8 @@ window.updateDate = async function(taskId, newDate) {
       properties['우선순위'] = { select: { name: priority } };
     }
     
-    const response = await fetch('https://api.notion.com/v1/pages', {
+    const notionUrl = 'https://api.notion.com/v1/pages';
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -502,7 +507,7 @@ window.updateDate = async function(taskId, newDate) {
         properties: properties
       })
     });
-    
+
     if (!response.ok) throw new Error('복제 실패');
     
     setTimeout(() => fetchData(), 500);
@@ -570,7 +575,8 @@ window.updateDateInTask = async function(taskId, newDate) {
       properties['우선순위'] = { select: { name: priority } };
     }
     
-    const response = await fetch('https://api.notion.com/v1/pages', {
+    const notionUrl = 'https://api.notion.com/v1/pages';
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -582,7 +588,7 @@ window.updateDateInTask = async function(taskId, newDate) {
         properties: properties
       })
     });
-    
+
     if (!response.ok) throw new Error('복제 실패');
     
     setTimeout(() => fetchData(), 500);
@@ -626,12 +632,13 @@ function setupEventListeners() {
   });
 }
 
-async function fetchData() {
+async function fetchData(retryCount = 0) {
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
-  
+
   try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${DATABASE_ID}/query`, {
+    const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -644,7 +651,10 @@ async function fetchData() {
       })
     });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API Error ${response.status}: ${errorData.message || response.statusText}`);
+    }
 
     currentData = await response.json();
     await fetchBookNames();
@@ -652,8 +662,33 @@ async function fetchData() {
     updateLastUpdateTime();
   } catch (error) {
     console.error('Error:', error);
-    document.getElementById('content').innerHTML = 
-      `<div class="empty-message">❌ 오류: ${error.message}</div>`;
+
+    // Determine error type and provide specific message
+    let errorMessage = '';
+    if (error.message.includes('Failed to fetch')) {
+      errorMessage = `네트워크 연결을 확인해주세요.\n\n가능한 원인:\n• 인터넷 연결 끊김\n• CORS 문제 (브라우저에서 직접 실행 시)\n• API 키 만료\n\n해결 방법:\n• 인터넷 연결 확인\n• 로컬 서버에서 실행 (예: Live Server)\n• API 키 갱신`;
+    } else if (error.message.includes('401')) {
+      errorMessage = 'API 키가 유효하지 않습니다. Notion API 키를 확인해주세요.';
+    } else if (error.message.includes('404')) {
+      errorMessage = '데이터베이스를 찾을 수 없습니다. DATABASE_ID를 확인해주세요.';
+    } else if (error.message.includes('429')) {
+      errorMessage = 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.';
+    } else {
+      errorMessage = error.message;
+    }
+
+    // Retry logic for network errors
+    if (error.message.includes('Failed to fetch') && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+      console.log(`Retrying in ${delay}ms... (attempt ${retryCount + 1}/3)`);
+      document.getElementById('content').innerHTML =
+        `<div class="empty-message">⚠️ 연결 중... (${retryCount + 1}/3)<br><br>${errorMessage}</div>`;
+      setTimeout(() => fetchData(retryCount + 1), delay);
+      return;
+    }
+
+    document.getElementById('content').innerHTML =
+      `<div class="empty-message" style="white-space: pre-line;">❌ 오류\n\n${errorMessage}</div>`;
   } finally {
     loading.textContent = '';
   }
@@ -661,22 +696,23 @@ async function fetchData() {
 
 async function fetchBookNames() {
   const bookIds = new Set();
-  
+
   currentData.results.forEach(task => {
     const bookRelations = task.properties?.['책']?.relation || [];
     bookRelations.forEach(rel => bookIds.add(rel.id));
   });
-  
+
   for (const bookId of bookIds) {
     if (!bookNames[bookId]) {
       try {
-        const response = await fetch(`https://api.notion.com/v1/pages/${bookId}`, {
+        const notionUrl = `https://api.notion.com/v1/pages/${bookId}`;
+        const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
           headers: {
             'Authorization': `Bearer ${NOTION_API_KEY}`,
             'Notion-Version': '2022-06-28'
           }
         });
-        
+
         if (response.ok) {
           const bookData = await response.json();
           for (const [key, value] of Object.entries(bookData.properties)) {
@@ -686,8 +722,12 @@ async function fetchBookNames() {
             }
           }
           if (!bookNames[bookId]) bookNames[bookId] = '책';
+        } else {
+          console.warn(`Failed to fetch book ${bookId}: ${response.status}`);
+          bookNames[bookId] = '책';
         }
       } catch (error) {
+        console.warn(`Error fetching book ${bookId}:`, error);
         bookNames[bookId] = '책';
       }
     }
@@ -1011,7 +1051,8 @@ async function updateTaskOrder() {
 }
 
 async function updateNotionPage(pageId, properties) {
-  const response = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+  const notionUrl = `https://api.notion.com/v1/pages/${pageId}`;
+  const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
     method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${NOTION_API_KEY}`,
