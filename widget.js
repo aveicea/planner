@@ -1334,7 +1334,7 @@ function renderTimelineView() {
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="font-size: 11px; color: #86868b;">
-              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? ` <span style="color: ${actualTime - targetTime > 0 ? '#FF3B30' : actualTime - targetTime < 0 ? '#34C759' : '#666'};">(${actualTime - targetTime > 0 ? '+' : ''}${formatMinutesToTime(Math.abs(actualTime - targetTime))})</span>` : ''}
+              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? ` (${actualTime - targetTime > 0 ? '+' : ''}${formatMinutesToTime(Math.abs(actualTime - targetTime))})` : ''}
             </div>
             <span style="cursor: pointer; font-size: 16px; position: relative; display: inline-block; width: 20px; height: 20px; flex-shrink: 0;">
               →
