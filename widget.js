@@ -55,7 +55,7 @@ window.toggleDDaySelector = async function() {
   const ddayItems = ddayData.results.filter(item => {
     if (item.properties?.['디데이 표시']?.checkbox !== true) return false;
 
-    const dateStr = item.properties?.['날짜']?.date?.start;
+    const dateStr = item.properties?.['date']?.date?.start;
     if (!dateStr) return false;
 
     const itemDate = new Date(dateStr);
@@ -72,8 +72,8 @@ window.toggleDDaySelector = async function() {
 
   // 날짜순 정렬
   ddayItems.sort((a, b) => {
-    const dateA = new Date(a.properties?.['날짜']?.date?.start);
-    const dateB = new Date(b.properties?.['날짜']?.date?.start);
+    const dateA = new Date(a.properties?.['date']?.date?.start);
+    const dateB = new Date(b.properties?.['date']?.date?.start);
     return dateA - dateB;
   });
 
@@ -86,8 +86,8 @@ window.toggleDDaySelector = async function() {
   `;
 
   ddayItems.forEach(item => {
-    const title = item.properties?.['제목']?.title?.[0]?.plain_text || '제목 없음';
-    const dateStr = item.properties?.['날짜']?.date?.start || '';
+    const title = item.properties?.['이름']?.title?.[0]?.plain_text || '제목 없음';
+    const dateStr = item.properties?.['date']?.date?.start || '';
     const isSelected = dDayDate === dateStr;
 
     // D-Day 계산
@@ -143,27 +143,16 @@ window.clearDDay = function() {
 
 function autoSelectClosestDDay() {
   if (!ddayData || !ddayData.results) {
-    console.log('No D-Day data available');
     return;
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  console.log('D-Day data results:', ddayData.results.length);
-
-  // 첫 번째 항목의 속성 구조 확인
-  if (ddayData.results.length > 0) {
-    console.log('First item properties:', Object.keys(ddayData.results[0].properties));
-    console.log('Full first item:', JSON.stringify(ddayData.results[0], null, 2));
-  }
-
   // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
   const futureDDays = ddayData.results.filter(item => {
     const hasCheckbox = item.properties?.['디데이 표시']?.checkbox === true;
-    const dateStr = item.properties?.['날짜']?.date?.start;
-
-    console.log('Item:', item.properties?.['제목']?.title?.[0]?.plain_text, 'Checkbox:', hasCheckbox, 'Date:', dateStr);
+    const dateStr = item.properties?.['date']?.date?.start;
 
     if (!hasCheckbox) return false;
     if (!dateStr) return false;
@@ -174,23 +163,19 @@ function autoSelectClosestDDay() {
     return itemDate >= today;
   });
 
-  console.log('Future D-Days found:', futureDDays.length);
-
   if (futureDDays.length === 0) return;
 
   // 날짜순 정렬 (가장 가까운 날짜 찾기)
   futureDDays.sort((a, b) => {
-    const dateA = new Date(a.properties?.['날짜']?.date?.start);
-    const dateB = new Date(b.properties?.['날짜']?.date?.start);
+    const dateA = new Date(a.properties?.['date']?.date?.start);
+    const dateB = new Date(b.properties?.['date']?.date?.start);
     return dateA - dateB;
   });
 
   // 가장 가까운 D-Day 선택
   const closestDDay = futureDDays[0];
-  const title = closestDDay.properties?.['제목']?.title?.[0]?.plain_text || '제목 없음';
-  const date = closestDDay.properties?.['날짜']?.date?.start || '';
-
-  console.log('Selected D-Day:', title, date);
+  const title = closestDDay.properties?.['이름']?.title?.[0]?.plain_text || '제목 없음';
+  const date = closestDDay.properties?.['date']?.date?.start || '';
 
   dDayDate = date;
   dDayTitle = title;
