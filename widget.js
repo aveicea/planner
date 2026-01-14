@@ -10,7 +10,7 @@ let bookNames = {};
 let currentDate = new Date();
 let calendarViewMode = false;
 let calendarStartDate = new Date();
-let calendarWeeksToShow = 2;
+let calendarEndDate = new Date();
 
 // 전역 함수 등록
 window.changeDate = function(days) {
@@ -26,8 +26,11 @@ window.goToday = function() {
 window.toggleCalendarView = async function() {
   calendarViewMode = !calendarViewMode;
   if (calendarViewMode) {
-    calendarStartDate = new Date(); // 오늘로 초기화
-    calendarStartDate.setHours(0, 0, 0, 0); // 시간 초기화
+    // 오늘 기준으로 앞으로 2주 보기
+    calendarStartDate = new Date();
+    calendarStartDate.setHours(0, 0, 0, 0);
+    calendarEndDate = new Date(calendarStartDate);
+    calendarEndDate.setDate(calendarEndDate.getDate() + 14);
     await fetchCalendarData();
     renderCalendarView();
   } else {
@@ -736,10 +739,19 @@ async function fetchData(retryCount = 0) {
 async function fetchBookNames() {
   const bookIds = new Set();
 
+  // planner 데이터베이스의 책 ID 수집
   currentData.results.forEach(task => {
     const bookRelations = task.properties?.['책']?.relation || [];
     bookRelations.forEach(rel => bookIds.add(rel.id));
   });
+
+  // calendar 데이터베이스의 책 ID 수집
+  if (calendarData && calendarData.results) {
+    calendarData.results.forEach(task => {
+      const bookRelations = task.properties?.['책']?.relation || [];
+      bookRelations.forEach(rel => bookIds.add(rel.id));
+    });
+  }
 
   for (const bookId of bookIds) {
     if (!bookNames[bookId]) {
@@ -776,11 +788,38 @@ async function fetchBookNames() {
 function getTaskTitle(task) {
   const scope = task.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
   const bookRelation = task.properties?.['책']?.relation?.[0];
-  
+
   if (bookRelation && bookNames[bookRelation.id]) {
     return `[${bookNames[bookRelation.id]}] ${scope}`;
   }
   return scope;
+}
+
+function getCalendarItemTitle(item) {
+  // 여러 가능한 속성 이름 시도
+  let title = null;
+
+  // 먼저 '범위' 속성 시도
+  if (item.properties?.['범위']?.title?.[0]?.plain_text) {
+    title = item.properties['범위'].title[0].plain_text;
+  }
+
+  // 'pre-plan' 속성 시도
+  if (!title && item.properties?.['pre-plan']?.title?.[0]?.plain_text) {
+    title = item.properties['pre-plan'].title[0].plain_text;
+  }
+
+  // 모든 title 타입 속성 찾기
+  if (!title) {
+    for (const [key, value] of Object.entries(item.properties || {})) {
+      if (value.type === 'title' && value.title && value.title.length > 0) {
+        title = value.title[0].plain_text;
+        break;
+      }
+    }
+  }
+
+  return title || '제목 없음';
 }
 
 function renderData() {
@@ -1192,12 +1231,13 @@ window.updateCalendarItemDate = async function(itemId, newDate) {
   }
 };
 
-window.loadMoreCalendar = function(direction) {
-  if (direction === 'prev') {
-    calendarStartDate.setDate(calendarStartDate.getDate() - 14);
-  } else {
-    calendarStartDate.setDate(calendarStartDate.getDate() + 14);
-  }
+window.loadPrevCalendar = function() {
+  calendarStartDate.setDate(calendarStartDate.getDate() - 14);
+  renderCalendarView();
+};
+
+window.loadNextCalendar = function() {
+  calendarEndDate.setDate(calendarEndDate.getDate() + 14);
   renderCalendarView();
 };
 
@@ -1212,7 +1252,7 @@ window.saveToPlanner = async function(dateStr) {
     });
 
     for (const item of itemsOnDate) {
-      const title = item.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
+      const title = getCalendarItemTitle(item);
       const bookRelation = item.properties?.['책']?.relation?.[0];
 
       const properties = {
@@ -1275,13 +1315,10 @@ function renderCalendarView() {
     }
   });
 
-  // 날짜 필터링: 시작일부터 2주간
-  const endDate = new Date(calendarStartDate);
-  endDate.setDate(endDate.getDate() + (calendarWeeksToShow * 7));
-
+  // 날짜 필터링: calendarStartDate부터 calendarEndDate까지
   const filteredDates = Object.keys(groupedByDate).filter(dateStr => {
     const date = new Date(dateStr);
-    return date >= calendarStartDate && date < endDate;
+    return date >= calendarStartDate && date < calendarEndDate;
   });
 
   // 날짜 정렬 (오름차순)
@@ -1292,10 +1329,7 @@ function renderCalendarView() {
       <h3 class="section-title" style="margin: 0;">📅 달력</h3>
       <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
     </div>
-    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-      <button onclick="loadMoreCalendar('prev')" style="flex: 1; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 6px; font-size: 11px; cursor: pointer;">◀ 이전 2주</button>
-      <button onclick="loadMoreCalendar('next')" style="flex: 1; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 6px; font-size: 11px; cursor: pointer;">다음 2주 ▶</button>
-    </div>
+    <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">⬆ 이전 2주 더보기</button>
   `;
 
   sortedDates.forEach(dateStr => {
@@ -1312,7 +1346,7 @@ function renderCalendarView() {
     `;
 
     items.forEach(item => {
-      const title = item.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
+      const title = getCalendarItemTitle(item);
       const bookRelation = item.properties?.['책']?.relation?.[0];
       const bookName = bookRelation && bookNames[bookRelation.id] ? bookNames[bookRelation.id] : '';
       const displayTitle = bookName ? `[${bookName}] ${title}` : title;
@@ -1329,6 +1363,10 @@ function renderCalendarView() {
       </div>
     `;
   });
+
+  html += `
+    <button onclick="loadNextCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-top: 4px;">⬇ 다음 2주 더보기</button>
+  `;
 
   content.innerHTML = html;
   initCalendarDragDrop();
