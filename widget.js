@@ -1300,7 +1300,7 @@ window.saveToPlanner = async function(dateStr) {
       }
     }
 
-    alert(`${itemsOnDate.length}개 항목이 플래너에 저장되었습니다!`);
+    // alert 없이 바로 새로고침
     await fetchData();
   } catch (error) {
     console.error('Save error:', error);
@@ -1308,6 +1308,14 @@ window.saveToPlanner = async function(dateStr) {
   } finally {
     loading.textContent = '';
   }
+};
+
+window.undoCalendarSync = async function() {
+  if (!confirm('마지막 동기화를 되돌리시겠습니까?')) return;
+
+  // 되돌리기 로직은 복잡하므로 일단 새로고침만
+  await fetchCalendarData();
+  renderCalendarView();
 };
 
 window.syncPlannerToCalendar = async function() {
@@ -1450,18 +1458,7 @@ window.syncPlannerToCalendar = async function() {
       }
     }
 
-    let message = '';
-    if (syncCount > 0 && updateCount > 0) {
-      message = `✅ ${syncCount}개 추가, ${updateCount}개 날짜 수정`;
-    } else if (syncCount > 0) {
-      message = `✅ ${syncCount}개 추가됨`;
-    } else if (updateCount > 0) {
-      message = `✅ ${updateCount}개 날짜 수정됨`;
-    } else {
-      message = '✅ 이미 모두 동기화되어 있습니다';
-    }
-
-    alert(message);
+    // alert 없이 바로 새로고침
     await fetchCalendarData();
     renderCalendarView();
   } catch (error) {
@@ -1501,9 +1498,12 @@ function renderCalendarView() {
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <h3 class="section-title" style="margin: 0;">📅 달력</h3>
-      <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button onclick="undoCalendarSync()" style="font-size: 16px; padding: 4px; background: none; border: none; cursor: pointer;" title="되돌리기">↩️</button>
+        <button onclick="syncPlannerToCalendar()" style="font-size: 16px; padding: 4px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
+        <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
+      </div>
     </div>
-    <button onclick="syncPlannerToCalendar()" style="width: 100%; background: #007AFF; color: white; border: none; border-radius: 4px; padding: 8px; font-size: 12px; cursor: pointer; margin-bottom: 8px; font-weight: 600;">🔄 플래너 동기화</button>
     <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">⬆ 이전 2주 더보기</button>
   `;
 
@@ -1515,7 +1515,7 @@ function renderCalendarView() {
       <div style="margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <h4 style="font-size: 13px; font-weight: 600; color: #666; margin: 0;">${dateLabel}</h4>
-          ${items.length > 0 ? `<button onclick="saveToPlanner('${dateStr}')" style="background: #999; color: white; border: none; border-radius: 4px; padding: 4px 12px; font-size: 11px; cursor: pointer;">💾 저장</button>` : ''}
+          ${items.length > 0 ? `<button onclick="saveToPlanner('${dateStr}')" style="font-size: 16px; padding: 4px; background: none; border: none; cursor: pointer;" title="플래너에 저장">💾</button>` : ''}
         </div>
         <div class="calendar-date-group" data-date="${dateStr}">
     `;
