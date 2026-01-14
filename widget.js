@@ -262,7 +262,7 @@ function renderPlannerCalendarHTML() {
     });
 
     const totalDiff = totalActual - totalTarget;
-    const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '');
+    const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '-');
     const diffColor = totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666';
 
     const dayOfWeek = currentLoop.getDay();
@@ -279,13 +279,11 @@ function renderPlannerCalendarHTML() {
         opacity: ${isCurrentMonth ? '1' : '0.3'};
       ">
         <div style="font-size: 12px; font-weight: 600; color: ${isToday ? 'white' : dayColor}; margin-bottom: 4px;">${date}</div>
-        ${tasks.length > 0 ? `
-          <div style="font-size: 9px; color: ${isToday ? 'rgba(255,255,255,0.9)' : '#86868b'}; line-height: 1.3;">
-            <div>목표 ${formatMinutesToTime(totalTarget)}</div>
-            <div>실제 ${formatMinutesToTime(totalActual)}</div>
-            <div style="color: ${isToday ? 'white' : diffColor}; font-weight: 600;">${diffSign}${formatMinutesToTime(Math.abs(totalDiff))}</div>
-          </div>
-        ` : ''}
+        <div style="font-size: 9px; color: ${isToday ? 'rgba(255,255,255,0.9)' : '#86868b'}; line-height: 1.4; text-align: right;">
+          <div>${formatMinutesToTime(totalTarget)}</div>
+          <div>${formatMinutesToTime(totalActual)}</div>
+          <div style="color: ${isToday ? 'white' : diffColor}; font-weight: 600;">${diffSign}${formatMinutesToTime(Math.abs(totalDiff))}</div>
+        </div>
       </div>
     `;
 
