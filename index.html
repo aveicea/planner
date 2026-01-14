@@ -194,12 +194,38 @@
       margin: 20px 0;
       text-align: center;
     }
+
+    .calendar-date-group {
+      min-height: 50px;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .calendar-item {
+      background: #fff;
+      border: 1px solid #e5e5e7;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      cursor: move;
+      transition: all 0.2s;
+    }
+
+    .calendar-item:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .calendar-item:active {
+      cursor: grabbing;
+    }
   </style>
 </head>
 <body>
   <div id="widget-container">
     <div class="header">
-      <h2>📚 PLANNER</h2>
+      <h2 onclick="toggleCalendarView()" style="cursor: pointer;" title="달력 보기">📚 PLANNER</h2>
       <div class="header-buttons">
         <span class="loading" id="loading"></span>
         <button id="view-toggle">TIME TABLE</button>

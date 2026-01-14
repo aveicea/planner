@@ -1,11 +1,14 @@
 const NOTION_API_KEY = "secret_pNLmc1M6IlbkoiwoUrKnE2mzJlJGYZ61eppTt5tRZuR";
 const DATABASE_ID = "468bf987e6cd4372abf96a8f30f165b1";
+const CALENDAR_DB_ID = "ddfee91eec854db08c445b0fa1abd347";
 const CORS_PROXY = "https://corsproxy.io/?";
 
 let viewMode = 'timeline';
 let currentData = null;
+let calendarData = null;
 let bookNames = {};
 let currentDate = new Date();
+let calendarViewMode = false;
 
 // 전역 함수 등록
 window.changeDate = function(days) {
@@ -16,6 +19,16 @@ window.changeDate = function(days) {
 window.goToday = function() {
   currentDate = new Date();
   renderData();
+};
+
+window.toggleCalendarView = async function() {
+  calendarViewMode = !calendarViewMode;
+  if (calendarViewMode) {
+    await fetchCalendarData();
+    renderCalendarView();
+  } else {
+    renderData();
+  }
 };
 
 window.editTask = async function(taskId) {
@@ -1082,6 +1095,210 @@ function formatDateShort(dateString) {
 
 function updateLastUpdateTime() {
   const now = new Date();
-  document.getElementById('last-update').textContent = 
+  document.getElementById('last-update').textContent =
     now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function fetchCalendarData() {
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    const notionUrl = `https://api.notion.com/v1/databases/${CALENDAR_DB_ID}/query`;
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        page_size: 100,
+        sorts: [{ property: "날짜", direction: "descending" }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Calendar API Error: ${response.status}`);
+    }
+
+    calendarData = await response.json();
+    await fetchBookNames();
+  } catch (error) {
+    console.error('Calendar fetch error:', error);
+    alert('달력 데이터를 불러오는데 실패했습니다: ' + error.message);
+  } finally {
+    loading.textContent = '';
+  }
+}
+
+window.updateCalendarItemDate = function(itemId, newDate) {
+  const item = calendarData.results.find(t => t.id === itemId);
+  if (item && item.properties?.['날짜']) {
+    item.properties['날짜'].date = { start: newDate };
+  }
+};
+
+window.saveToPlanner = async function(dateStr) {
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    const itemsOnDate = calendarData.results.filter(item => {
+      const itemDate = item.properties?.['날짜']?.date?.start;
+      return itemDate === dateStr;
+    });
+
+    for (const item of itemsOnDate) {
+      const title = item.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
+      const bookRelation = item.properties?.['책']?.relation?.[0];
+
+      const properties = {
+        '범위': {
+          title: [{ text: { content: title } }]
+        },
+        '날짜': {
+          date: { start: dateStr }
+        },
+        '완료': { checkbox: false }
+      };
+
+      if (bookRelation) {
+        properties['책'] = { relation: [{ id: bookRelation.id }] };
+      }
+
+      const notionUrl = 'https://api.notion.com/v1/pages';
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          parent: { database_id: DATABASE_ID },
+          properties: properties
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('플래너에 저장 실패');
+      }
+    }
+
+    alert(`${itemsOnDate.length}개 항목이 플래너에 저장되었습니다!`);
+    await fetchData();
+  } catch (error) {
+    console.error('Save error:', error);
+    alert('플래너에 저장하는데 실패했습니다: ' + error.message);
+  } finally {
+    loading.textContent = '';
+  }
+};
+
+function renderCalendarView() {
+  if (!calendarData || !calendarData.results) return;
+
+  const content = document.getElementById('content');
+
+  // 날짜별로 그룹화
+  const groupedByDate = {};
+  calendarData.results.forEach(item => {
+    const dateStart = item.properties?.['날짜']?.date?.start;
+    if (dateStart) {
+      if (!groupedByDate[dateStart]) {
+        groupedByDate[dateStart] = [];
+      }
+      groupedByDate[dateStart].push(item);
+    }
+  });
+
+  // 날짜 정렬 (최신순)
+  const sortedDates = Object.keys(groupedByDate).sort().reverse();
+
+  let html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 class="section-title" style="margin: 0;">📅 달력</h3>
+      <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
+    </div>
+  `;
+
+  sortedDates.forEach(dateStr => {
+    const items = groupedByDate[dateStr];
+    const dateLabel = formatDateLabel(dateStr);
+
+    html += `
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h4 style="font-size: 13px; font-weight: 600; color: #666; margin: 0;">${dateLabel}</h4>
+          <button onclick="saveToPlanner('${dateStr}')" style="background: #007AFF; color: white; border: none; border-radius: 4px; padding: 4px 12px; font-size: 11px; cursor: pointer;">💾 저장</button>
+        </div>
+        <div class="calendar-date-group" data-date="${dateStr}">
+    `;
+
+    items.forEach(item => {
+      const title = item.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
+      const bookRelation = item.properties?.['책']?.relation?.[0];
+      const bookName = bookRelation && bookNames[bookRelation.id] ? bookNames[bookRelation.id] : '';
+      const displayTitle = bookName ? `[${bookName}] ${title}` : title;
+
+      html += `
+        <div class="calendar-item" draggable="true" data-id="${item.id}" data-date="${dateStr}">
+          <div style="font-size: 12px; color: #333;">${displayTitle}</div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  });
+
+  content.innerHTML = html;
+  initCalendarDragDrop();
+}
+
+function initCalendarDragDrop() {
+  const items = document.querySelectorAll('.calendar-item');
+  const groups = document.querySelectorAll('.calendar-date-group');
+
+  let draggedItem = null;
+
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedItem = item;
+      item.style.opacity = '0.5';
+    });
+
+    item.addEventListener('dragend', (e) => {
+      item.style.opacity = '1';
+    });
+  });
+
+  groups.forEach(group => {
+    group.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      group.style.background = '#f0f0f0';
+    });
+
+    group.addEventListener('dragleave', (e) => {
+      group.style.background = 'transparent';
+    });
+
+    group.addEventListener('drop', (e) => {
+      e.preventDefault();
+      group.style.background = 'transparent';
+
+      if (draggedItem) {
+        const newDate = group.getAttribute('data-date');
+        const itemId = draggedItem.getAttribute('data-id');
+
+        draggedItem.setAttribute('data-date', newDate);
+        group.appendChild(draggedItem);
+
+        updateCalendarItemDate(itemId, newDate);
+      }
+    });
+  });
 }
