@@ -1024,9 +1024,9 @@ function renderTimelineView() {
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 8px; font-size: 11px; color: #86868b;">
-              <span>⏱ 목표 ${targetTime}분</span>
-              <span>⏳ 실제 ${actualTime}분</span>
-              ${diffStr ? `<span>📊 계획 ${diffStr}분</span>` : ''}
+              <span>목표 ${targetTime}분</span>
+              <span>실제 ${actualTime}분</span>
+              ${diffStr ? `<span>계획 ${diffStr}분</span>` : ''}
             </div>
             <span style="cursor: pointer; font-size: 16px; position: relative; display: inline-block; width: 20px; height: 20px; flex-shrink: 0;">
               →
@@ -1652,10 +1652,13 @@ function renderCalendarView() {
   const today = new Date().toISOString().split('T')[0];
 
   let html = `
-    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; gap: 4px;">
-      <button onclick="undoCalendarSync()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="되돌리기">↩️</button>
-      <button onclick="syncPlannerToCalendar()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
-      <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h3 class="section-title" style="margin: 0;">📅 PLAN</h3>
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <button onclick="undoCalendarSync()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="되돌리기">↩️</button>
+        <button onclick="syncPlannerToCalendar()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
+        <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
+      </div>
     </div>
     <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">⬆ 이전 2주 더보기</button>
   `;
@@ -1699,7 +1702,7 @@ function renderCalendarView() {
   });
 
   html += `
-    <button onclick="loadNextCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-top: 4px;">⬇ 다음 2주 더보기</button>
+    <button onclick="loadNextCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-top: 4px;">더보기</button>
   `;
 
   content.innerHTML = html;
