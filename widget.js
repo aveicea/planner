@@ -1284,29 +1284,7 @@ function formatDateLabelShort(dateString) {
   const date = new Date(dateString);
   const days = ['일', '월', '화', '수', '목', '금', '토'];
   const dayOfWeek = days[date.getDay()];
-
-  // D-Day 정보 추가
-  let label = `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
-
-  if (dDayDate) {
-    const today = new Date(dateString);
-    today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(dDayDate);
-    targetDate.setHours(0, 0, 0, 0);
-
-    const diffTime = targetDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      label += ' D-Day';
-    } else if (diffDays > 0) {
-      label += ` D-${diffDays}`;
-    } else {
-      label += ` D+${Math.abs(diffDays)}`;
-    }
-  }
-
-  return label;
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
 }
 
 function formatDateShort(dateString) {
