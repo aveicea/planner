@@ -152,6 +152,12 @@ function autoSelectClosestDDay() {
 
   console.log('D-Day data results:', ddayData.results.length);
 
+  // 첫 번째 항목의 속성 구조 확인
+  if (ddayData.results.length > 0) {
+    console.log('First item properties:', Object.keys(ddayData.results[0].properties));
+    console.log('Full first item:', JSON.stringify(ddayData.results[0], null, 2));
+  }
+
   // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
   const futureDDays = ddayData.results.filter(item => {
     const hasCheckbox = item.properties?.['디데이 표시']?.checkbox === true;
@@ -304,8 +310,7 @@ function renderPlannerCalendarHTML() {
     });
 
     const totalDiff = totalActual - totalTarget;
-    const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '-');
-    const diffColor = totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666';
+    const diffColor = totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#86868b';
 
     const dayOfWeek = currentLoop.getDay();
     const dayColor = dayOfWeek === 0 ? '#FF3B30' : dayOfWeek === 6 ? '#007AFF' : '#333';
@@ -322,9 +327,9 @@ function renderPlannerCalendarHTML() {
       ">
         <div style="font-size: 12px; font-weight: 600; color: ${isToday ? 'white' : dayColor}; margin-bottom: 4px;">${date}</div>
         <div style="font-size: 9px; color: ${isToday ? 'rgba(255,255,255,0.9)' : '#86868b'}; line-height: 1.4; text-align: right;">
-          <div>${formatMinutesToTime(totalTarget)}</div>
-          <div>${formatMinutesToTime(totalActual)}</div>
-          <div style="color: ${isToday ? 'white' : diffColor}; font-weight: 600;">${diffSign}${formatMinutesToTime(Math.abs(totalDiff))}</div>
+          <div>${formatMinutesToClock(totalTarget)}</div>
+          <div>${formatMinutesToClock(totalActual)}</div>
+          <div style="color: ${isToday ? 'white' : diffColor}; font-weight: 600;">${totalDiff === 0 ? formatMinutesToClock(0) : formatMinutesToClock(totalDiff)}</div>
         </div>
       </div>
     `;
@@ -1674,6 +1679,13 @@ function formatMinutesToTime(minutes) {
   if (hours === 0) return `${mins}분`;
   if (mins === 0) return `${hours}시간`;
   return `${hours}시간 ${mins}분`;
+}
+
+function formatMinutesToClock(minutes) {
+  const hours = Math.floor(Math.abs(minutes) / 60);
+  const mins = Math.abs(minutes) % 60;
+  const sign = minutes < 0 ? '-' : '';
+  return `${sign}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
 
 function updateLastUpdateTime() {
