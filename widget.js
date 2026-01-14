@@ -55,7 +55,7 @@ window.toggleDDaySelector = async function() {
   const ddayItems = ddayData.results.filter(item => {
     if (item.properties?.['디데이 표시']?.checkbox !== true) return false;
 
-    const dateStr = item.properties?.['날짜']?.date?.start;
+    const dateStr = item.properties?.['date']?.date?.start;
     if (!dateStr) return false;
 
     const itemDate = new Date(dateStr);
@@ -72,8 +72,8 @@ window.toggleDDaySelector = async function() {
 
   // 날짜순 정렬
   ddayItems.sort((a, b) => {
-    const dateA = new Date(a.properties?.['날짜']?.date?.start);
-    const dateB = new Date(b.properties?.['날짜']?.date?.start);
+    const dateA = new Date(a.properties?.['date']?.date?.start);
+    const dateB = new Date(b.properties?.['date']?.date?.start);
     return dateA - dateB;
   });
 
@@ -86,8 +86,8 @@ window.toggleDDaySelector = async function() {
   `;
 
   ddayItems.forEach(item => {
-    const title = item.properties?.['제목']?.title?.[0]?.plain_text || '제목 없음';
-    const dateStr = item.properties?.['날짜']?.date?.start || '';
+    const title = item.properties?.['이름']?.title?.[0]?.plain_text || '제목 없음';
+    const dateStr = item.properties?.['date']?.date?.start || '';
     const isSelected = dDayDate === dateStr;
 
     // D-Day 계산
@@ -143,27 +143,16 @@ window.clearDDay = function() {
 
 function autoSelectClosestDDay() {
   if (!ddayData || !ddayData.results) {
-    console.log('No D-Day data available');
     return;
   }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  console.log('D-Day data results:', ddayData.results.length);
-
-  // 첫 번째 항목의 속성 구조 확인
-  if (ddayData.results.length > 0) {
-    console.log('First item properties:', Object.keys(ddayData.results[0].properties));
-    console.log('Full first item:', JSON.stringify(ddayData.results[0], null, 2));
-  }
-
   // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
   const futureDDays = ddayData.results.filter(item => {
     const hasCheckbox = item.properties?.['디데이 표시']?.checkbox === true;
-    const dateStr = item.properties?.['날짜']?.date?.start;
-
-    console.log('Item:', item.properties?.['제목']?.title?.[0]?.plain_text, 'Checkbox:', hasCheckbox, 'Date:', dateStr);
+    const dateStr = item.properties?.['date']?.date?.start;
 
     if (!hasCheckbox) return false;
     if (!dateStr) return false;
@@ -174,23 +163,19 @@ function autoSelectClosestDDay() {
     return itemDate >= today;
   });
 
-  console.log('Future D-Days found:', futureDDays.length);
-
   if (futureDDays.length === 0) return;
 
   // 날짜순 정렬 (가장 가까운 날짜 찾기)
   futureDDays.sort((a, b) => {
-    const dateA = new Date(a.properties?.['날짜']?.date?.start);
-    const dateB = new Date(b.properties?.['날짜']?.date?.start);
+    const dateA = new Date(a.properties?.['date']?.date?.start);
+    const dateB = new Date(b.properties?.['date']?.date?.start);
     return dateA - dateB;
   });
 
   // 가장 가까운 D-Day 선택
   const closestDDay = futureDDays[0];
-  const title = closestDDay.properties?.['제목']?.title?.[0]?.plain_text || '제목 없음';
-  const date = closestDDay.properties?.['날짜']?.date?.start || '';
-
-  console.log('Selected D-Day:', title, date);
+  const title = closestDDay.properties?.['이름']?.title?.[0]?.plain_text || '제목 없음';
+  const date = closestDDay.properties?.['date']?.date?.start || '';
 
   dDayDate = date;
   dDayTitle = title;
@@ -227,7 +212,7 @@ function renderPlannerCalendarHTML() {
   // 날짜별로 그룹화
   const tasksByDate = {};
   currentData.results.forEach(item => {
-    const dateStart = item.properties?.['날짜']?.date?.start;
+    const dateStart = item.properties?.['date']?.date?.start;
     if (dateStart) {
       if (!tasksByDate[dateStart]) {
         tasksByDate[dateStart] = [];
@@ -407,7 +392,7 @@ window.editTask = async function(taskId) {
   const bookRelation = task.properties?.['책']?.relation?.[0];
   const bookId = bookRelation?.id || '';
   const targetTime = task.properties?.['목표 시간']?.number || '';
-  const dateStart = task.properties?.['날짜']?.date?.start || '';
+  const dateStart = task.properties?.['date']?.date?.start || '';
   const start = task.properties?.['시작']?.rich_text?.[0]?.plain_text || '';
   const end = task.properties?.['끝']?.rich_text?.[0]?.plain_text || '';
   const rating = task.properties?.['(੭•̀ᴗ•̀)੭']?.select?.name || '';
@@ -492,7 +477,7 @@ window.duplicateTask = async function(taskId) {
     
     const bookRelation = task.properties?.['책']?.relation?.[0];
     const targetTime = task.properties?.['목표 시간']?.number;
-    const dateStart = task.properties?.['날짜']?.date?.start;
+    const dateStart = task.properties?.['date']?.date?.start;
     // 시작/끝 시간은 복제하지 않음
 
     const properties = {
@@ -511,7 +496,7 @@ window.duplicateTask = async function(taskId) {
     }
 
     if (dateStart) {
-      properties['날짜'] = { date: { start: dateStart } };
+      properties['date'] = { date: { start: dateStart } };
     }
     
     // 우선순위 복사
@@ -584,7 +569,7 @@ window.confirmEditTask = async function(taskId) {
       }
 
       if (dateInput.value) {
-        properties['날짜'] = { date: { start: dateInput.value } };
+        properties['date'] = { date: { start: dateInput.value } };
       }
 
       if (startInput.value) {
@@ -850,7 +835,7 @@ window.updateDate = async function(taskId, newDate) {
   const task = currentData.results.find(t => t.id === taskId);
   if (!task) return;
   
-  const originalDate = task.properties?.['날짜']?.date?.start;
+  const originalDate = task.properties?.['date']?.date?.start;
   
   // 날짜가 실제로 바뀌었는지 확인
   if (originalDate === newDate) return;
@@ -933,7 +918,7 @@ window.updateDateInTask = async function(taskId, newDate) {
   const task = currentData.results.find(t => t.id === taskId);
   if (!task) return;
   
-  const originalDate = task.properties?.['날짜']?.date?.start;
+  const originalDate = task.properties?.['date']?.date?.start;
   
   if (originalDate === newDate) return;
   
@@ -1230,7 +1215,7 @@ function renderTimelineView() {
   const targetDateStr = currentDate.toISOString().split('T')[0];
 
   const dayTasks = currentData.results.filter(item => {
-    const dateStart = item.properties?.['날짜']?.date?.start;
+    const dateStart = item.properties?.['date']?.date?.start;
     return dateStart && dateStart === targetDateStr;
   });
 
@@ -1345,7 +1330,7 @@ function renderTimelineView() {
         diffStr = diff === 0 ? '' : `${diff > 0 ? '+' : ''}${diff}`;
       }
       
-      const dateStart = task.properties?.['날짜']?.date?.start || '';
+      const dateStart = task.properties?.['date']?.date?.start || '';
 
       html += `
         <div class="task-item ${completed ? 'completed' : ''}">
@@ -1404,7 +1389,7 @@ function renderTaskView() {
 
   // 날짜 필터
   const dayTasks = currentData.results.filter(item => {
-    const dateStart = item.properties?.['날짜']?.date?.start;
+    const dateStart = item.properties?.['date']?.date?.start;
     return dateStart && dateStart === targetDateStr;
   });
 
@@ -1473,7 +1458,7 @@ function renderTaskView() {
     const title = getTaskTitle(task);
     const priority = task.properties?.['우선순위']?.select?.name;
     const targetTime = task.properties?.['목표 시간']?.number;
-    const dateStart = task.properties?.['날짜']?.date?.start || '';
+    const dateStart = task.properties?.['date']?.date?.start || '';
     const completed = task.properties?.['완료']?.checkbox;
 
     html += `
@@ -1760,8 +1745,8 @@ async function fetchDDayData() {
 
 window.updateCalendarItemDate = async function(itemId, newDate) {
   const item = calendarData.results.find(t => t.id === itemId);
-  if (item && item.properties?.['날짜']) {
-    item.properties['날짜'].date = { start: newDate };
+  if (item && item.properties?.['date']) {
+    item.properties['date'].date = { start: newDate };
 
     // 노션에 실제로 날짜 업데이트
     try {
@@ -1805,7 +1790,7 @@ window.saveToPlanner = async function(dateStr) {
 
   try {
     const itemsOnDate = calendarData.results.filter(item => {
-      const itemDate = item.properties?.['날짜']?.date?.start;
+      const itemDate = item.properties?.['date']?.date?.start;
       return itemDate === dateStr;
     });
 
@@ -1919,7 +1904,7 @@ window.syncPlannerToCalendar = async function() {
     // 날짜별로 그룹화
     const itemsByDate = {};
     plannerItems.forEach(item => {
-      const dateStart = item.properties?.['날짜']?.date?.start;
+      const dateStart = item.properties?.['date']?.date?.start;
       if (dateStart) {
         if (!itemsByDate[dateStart]) {
           itemsByDate[dateStart] = [];
@@ -1972,7 +1957,7 @@ window.syncPlannerToCalendar = async function() {
     let updateCount = 0;
     for (const item of originalItems) {
       const title = item.properties?.['범위']?.title?.[0]?.plain_text || '';
-      const dateStart = item.properties?.['날짜']?.date?.start;
+      const dateStart = item.properties?.['date']?.date?.start;
       const bookRelation = item.properties?.['책']?.relation?.[0];
       const bookId = bookRelation?.id || 'no-book';
 
@@ -1982,7 +1967,7 @@ window.syncPlannerToCalendar = async function() {
 
       if (existingItem) {
         // 이미 있으면 날짜 확인
-        const existingDate = existingItem.properties?.['날짜']?.date?.start;
+        const existingDate = existingItem.properties?.['date']?.date?.start;
         if (existingDate !== dateStart) {
           // 날짜가 다르면 업데이트
           const notionUrl = `https://api.notion.com/v1/pages/${existingItem.id}`;
@@ -2084,7 +2069,7 @@ function renderCalendarView() {
   // 날짜별로 그룹화
   const groupedByDate = {};
   calendarData.results.forEach(item => {
-    const dateStart = item.properties?.['날짜']?.date?.start;
+    const dateStart = item.properties?.['date']?.date?.start;
     if (dateStart) {
       if (!groupedByDate[dateStart]) {
         groupedByDate[dateStart] = [];
