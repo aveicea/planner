@@ -219,7 +219,7 @@ function renderPlannerCalendarHTML() {
   // 날짜별로 그룹화
   const tasksByDate = {};
   currentData.results.forEach(item => {
-    const dateStart = item.properties?.['date']?.date?.start;
+    const dateStart = item.properties?.['날짜']?.date?.start;
     if (dateStart) {
       if (!tasksByDate[dateStart]) {
         tasksByDate[dateStart] = [];
@@ -398,7 +398,7 @@ window.editTask = async function(taskId) {
   const bookRelation = task.properties?.['책']?.relation?.[0];
   const bookId = bookRelation?.id || '';
   const targetTime = task.properties?.['목표 시간']?.number || '';
-  const dateStart = task.properties?.['date']?.date?.start || '';
+  const dateStart = task.properties?.['날짜']?.date?.start || '';
   const start = task.properties?.['시작']?.rich_text?.[0]?.plain_text || '';
   const end = task.properties?.['끝']?.rich_text?.[0]?.plain_text || '';
   const rating = task.properties?.['(੭•̀ᴗ•̀)੭']?.select?.name || '';
@@ -483,7 +483,7 @@ window.duplicateTask = async function(taskId) {
     
     const bookRelation = task.properties?.['책']?.relation?.[0];
     const targetTime = task.properties?.['목표 시간']?.number;
-    const dateStart = task.properties?.['date']?.date?.start;
+    const dateStart = task.properties?.['날짜']?.date?.start;
     // 시작/끝 시간은 복제하지 않음
 
     const properties = {
@@ -502,7 +502,7 @@ window.duplicateTask = async function(taskId) {
     }
 
     if (dateStart) {
-      properties['date'] = { date: { start: dateStart } };
+      properties['날짜'] = { date: { start: dateStart } };
     }
     
     // 우선순위 복사
@@ -575,7 +575,7 @@ window.confirmEditTask = async function(taskId) {
       }
 
       if (dateInput.value) {
-        properties['date'] = { date: { start: dateInput.value } };
+        properties['날짜'] = { date: { start: dateInput.value } };
       }
 
       if (startInput.value) {
@@ -841,7 +841,7 @@ window.updateDate = async function(taskId, newDate) {
   const task = currentData.results.find(t => t.id === taskId);
   if (!task) return;
   
-  const originalDate = task.properties?.['date']?.date?.start;
+  const originalDate = task.properties?.['날짜']?.date?.start;
   
   // 날짜가 실제로 바뀌었는지 확인
   if (originalDate === newDate) return;
@@ -924,7 +924,7 @@ window.updateDateInTask = async function(taskId, newDate) {
   const task = currentData.results.find(t => t.id === taskId);
   if (!task) return;
   
-  const originalDate = task.properties?.['date']?.date?.start;
+  const originalDate = task.properties?.['날짜']?.date?.start;
   
   if (originalDate === newDate) return;
   
@@ -1221,7 +1221,7 @@ function renderTimelineView() {
   const targetDateStr = currentDate.toISOString().split('T')[0];
 
   const dayTasks = currentData.results.filter(item => {
-    const dateStart = item.properties?.['date']?.date?.start;
+    const dateStart = item.properties?.['날짜']?.date?.start;
     return dateStart && dateStart === targetDateStr;
   });
 
@@ -1336,7 +1336,7 @@ function renderTimelineView() {
         diffStr = diff === 0 ? '' : `${diff > 0 ? '+' : ''}${diff}`;
       }
       
-      const dateStart = task.properties?.['date']?.date?.start || '';
+      const dateStart = task.properties?.['날짜']?.date?.start || '';
 
       html += `
         <div class="task-item ${completed ? 'completed' : ''}">
@@ -1395,7 +1395,7 @@ function renderTaskView() {
 
   // 날짜 필터
   const dayTasks = currentData.results.filter(item => {
-    const dateStart = item.properties?.['date']?.date?.start;
+    const dateStart = item.properties?.['날짜']?.date?.start;
     return dateStart && dateStart === targetDateStr;
   });
 
@@ -1464,7 +1464,7 @@ function renderTaskView() {
     const title = getTaskTitle(task);
     const priority = task.properties?.['우선순위']?.select?.name;
     const targetTime = task.properties?.['목표 시간']?.number;
-    const dateStart = task.properties?.['date']?.date?.start || '';
+    const dateStart = task.properties?.['날짜']?.date?.start || '';
     const completed = task.properties?.['완료']?.checkbox;
 
     html += `
@@ -1751,8 +1751,8 @@ async function fetchDDayData() {
 
 window.updateCalendarItemDate = async function(itemId, newDate) {
   const item = calendarData.results.find(t => t.id === itemId);
-  if (item && item.properties?.['date']) {
-    item.properties['date'].date = { start: newDate };
+  if (item && item.properties?.['날짜']) {
+    item.properties['날짜'].date = { start: newDate };
 
     // 노션에 실제로 날짜 업데이트
     try {
@@ -1796,7 +1796,7 @@ window.saveToPlanner = async function(dateStr) {
 
   try {
     const itemsOnDate = calendarData.results.filter(item => {
-      const itemDate = item.properties?.['date']?.date?.start;
+      const itemDate = item.properties?.['날짜']?.date?.start;
       return itemDate === dateStr;
     });
 
@@ -1910,7 +1910,7 @@ window.syncPlannerToCalendar = async function() {
     // 날짜별로 그룹화
     const itemsByDate = {};
     plannerItems.forEach(item => {
-      const dateStart = item.properties?.['date']?.date?.start;
+      const dateStart = item.properties?.['날짜']?.date?.start;
       if (dateStart) {
         if (!itemsByDate[dateStart]) {
           itemsByDate[dateStart] = [];
@@ -1963,7 +1963,7 @@ window.syncPlannerToCalendar = async function() {
     let updateCount = 0;
     for (const item of originalItems) {
       const title = item.properties?.['범위']?.title?.[0]?.plain_text || '';
-      const dateStart = item.properties?.['date']?.date?.start;
+      const dateStart = item.properties?.['날짜']?.date?.start;
       const bookRelation = item.properties?.['책']?.relation?.[0];
       const bookId = bookRelation?.id || 'no-book';
 
@@ -1973,7 +1973,7 @@ window.syncPlannerToCalendar = async function() {
 
       if (existingItem) {
         // 이미 있으면 날짜 확인
-        const existingDate = existingItem.properties?.['date']?.date?.start;
+        const existingDate = existingItem.properties?.['날짜']?.date?.start;
         if (existingDate !== dateStart) {
           // 날짜가 다르면 업데이트
           const notionUrl = `https://api.notion.com/v1/pages/${existingItem.id}`;
@@ -2075,7 +2075,7 @@ function renderCalendarView() {
   // 날짜별로 그룹화
   const groupedByDate = {};
   calendarData.results.forEach(item => {
-    const dateStart = item.properties?.['date']?.date?.start;
+    const dateStart = item.properties?.['날짜']?.date?.start;
     if (dateStart) {
       if (!groupedByDate[dateStart]) {
         groupedByDate[dateStart] = [];
