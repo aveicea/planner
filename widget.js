@@ -1304,6 +1304,8 @@ window.saveToPlanner = async function(dateStr) {
 };
 
 window.undoCalendarSync = async function() {
+  console.log('되돌리기 시도, 항목 수:', lastSyncedItems.length);
+
   if (lastSyncedItems.length === 0) {
     console.log('되돌릴 동기화 내역이 없습니다');
     return;
@@ -1314,9 +1316,11 @@ window.undoCalendarSync = async function() {
 
   try {
     // 마지막 동기화로 생성된 항목들을 삭제
+    let deletedCount = 0;
     for (const itemId of lastSyncedItems) {
+      console.log('삭제 시도:', itemId);
       const notionUrl = `https://api.notion.com/v1/pages/${itemId}`;
-      await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -1327,7 +1331,16 @@ window.undoCalendarSync = async function() {
           archived: true
         })
       });
+
+      if (response.ok) {
+        deletedCount++;
+        console.log('삭제 성공:', itemId);
+      } else {
+        console.error('삭제 실패:', itemId, response.status);
+      }
     }
+
+    console.log('총 삭제됨:', deletedCount);
 
     // 되돌리기 후 초기화
     lastSyncedItems = [];
@@ -1482,9 +1495,12 @@ window.syncPlannerToCalendar = async function() {
         const result = await response.json();
         // 새로 생성된 항목 ID 저장
         lastSyncedItems.push(result.id);
+        console.log('동기화 항목 추가:', result.id);
         syncCount++;
       }
     }
+
+    console.log('동기화 완료. 새 항목 수:', lastSyncedItems.length);
 
     // alert 없이 바로 새로고침
     await fetchCalendarData();
@@ -1540,9 +1556,9 @@ function renderCalendarView() {
 
     html += `
       <div style="margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; margin-bottom: 8px; gap: 8px;">
-          <h4 style="font-size: 13px; font-weight: 600; color: #666; margin: 0; flex: 1;">${dateLabel}</h4>
-          ${items.length > 0 ? `<button onclick="saveToPlanner('${dateStr}')" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너에 저장">💾</button>` : ''}
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+          <h4 style="font-size: 13px; font-weight: 600; color: #666; margin: 0;">${dateLabel}</h4>
+          ${items.length > 0 ? `<button onclick="saveToPlanner('${dateStr}')" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer; margin-left: 4px;" title="플래너에 저장">💾</button>` : ''}
         </div>
         <div class="calendar-date-group" data-date="${dateStr}">
     `;
