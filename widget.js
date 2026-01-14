@@ -104,20 +104,11 @@ let plannerCalendarViewMode = false;
 
 window.togglePlannerCalendar = function() {
   plannerCalendarViewMode = !plannerCalendarViewMode;
-  const viewToggle = document.getElementById('view-toggle');
-  if (plannerCalendarViewMode) {
-    viewToggle.textContent = '닫기';
-    renderPlannerCalendar();
-  } else {
-    viewToggle.textContent = '달력';
-    renderData();
-  }
+  renderCalendarView();
 };
 
-function renderPlannerCalendar() {
-  if (!currentData || !currentData.results) return;
-
-  const content = document.getElementById('content');
+function renderPlannerCalendarHTML() {
+  if (!currentData || !currentData.results) return '';
 
   // 날짜별로 그룹화
   const tasksByDate = {};
@@ -134,7 +125,11 @@ function renderPlannerCalendar() {
   // 날짜 정렬 (최신순)
   const sortedDates = Object.keys(tasksByDate).sort((a, b) => b.localeCompare(a));
 
-  let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+  let html = `
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e5e5e7;">
+      <h3 style="margin-bottom: 12px; font-size: 14px; font-weight: 600; color: #333;">📊 플래너 통계</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+  `;
 
   sortedDates.forEach(dateStr => {
     const tasks = tasksByDate[dateStr];
@@ -183,15 +178,20 @@ function renderPlannerCalendar() {
     `;
   });
 
-  html += '</div>';
-  content.innerHTML = html;
+  html += `
+      </div>
+    </div>
+  `;
+
+  return html;
 }
 
 window.goToDate = function(dateStr) {
   currentDate = new Date(dateStr);
+  calendarViewMode = false;
   plannerCalendarViewMode = false;
   const viewToggle = document.getElementById('view-toggle');
-  viewToggle.textContent = '달력';
+  viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
   renderData();
 };
 
@@ -213,7 +213,13 @@ function getDDayString() {
 
 window.toggleCalendarView = async function(targetDate = null) {
   calendarViewMode = !calendarViewMode;
+  const viewToggle = document.getElementById('view-toggle');
+
   if (calendarViewMode) {
+    // 프리플랜으로 진입
+    plannerCalendarViewMode = false;
+    viewToggle.textContent = '달력';
+
     // 오늘 기준으로 앞으로 2주 보기
     calendarStartDate = new Date();
     calendarStartDate.setHours(0, 0, 0, 0);
@@ -222,6 +228,10 @@ window.toggleCalendarView = async function(targetDate = null) {
     await fetchCalendarData();
     renderCalendarView();
   } else {
+    // 프리플랜에서 나가기
+    plannerCalendarViewMode = false;
+    viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
+
     // targetDate가 있으면 해당 날짜로 이동
     if (targetDate) {
       currentDate = new Date(targetDate);
@@ -867,7 +877,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   const viewToggle = document.getElementById('view-toggle');
   viewToggle.addEventListener('click', () => {
-    togglePlannerCalendar();
+    if (calendarViewMode) {
+      // 프리플랜 화면에서는 달력 통계 토글
+      togglePlannerCalendar();
+    } else {
+      // 플래너 화면에서는 TIME TABLE / TASK 전환
+      viewMode = viewMode === 'timeline' ? 'task' : 'timeline';
+      viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
+      renderData();
+    }
   });
 }
 
@@ -1025,7 +1043,11 @@ function renderData() {
   // D-Day 버튼 업데이트
   updateDDayButton();
 
-  renderTimelineView();
+  if (viewMode === 'timeline') {
+    renderTimelineView();
+  } else {
+    renderTaskView();
+  }
 }
 
 function updateDDayButton() {
@@ -1908,6 +1930,11 @@ function renderCalendarView() {
   html += `
     <button onclick="loadNextCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-top: 4px;">더보기</button>
   `;
+
+  // plannerCalendarViewMode가 true일 때 플래너 시간 통계 달력 추가
+  if (plannerCalendarViewMode) {
+    html += renderPlannerCalendarHTML();
+  }
 
   content.innerHTML = html;
   initCalendarDragDrop();
