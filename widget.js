@@ -100,6 +100,101 @@ window.clearDDay = function() {
   renderData();
 };
 
+let plannerCalendarViewMode = false;
+
+window.togglePlannerCalendar = function() {
+  plannerCalendarViewMode = !plannerCalendarViewMode;
+  const viewToggle = document.getElementById('view-toggle');
+  if (plannerCalendarViewMode) {
+    viewToggle.textContent = '닫기';
+    renderPlannerCalendar();
+  } else {
+    viewToggle.textContent = '달력';
+    renderData();
+  }
+};
+
+function renderPlannerCalendar() {
+  if (!currentData || !currentData.results) return;
+
+  const content = document.getElementById('content');
+
+  // 날짜별로 그룹화
+  const tasksByDate = {};
+  currentData.results.forEach(item => {
+    const dateStart = item.properties?.['날짜']?.date?.start;
+    if (dateStart) {
+      if (!tasksByDate[dateStart]) {
+        tasksByDate[dateStart] = [];
+      }
+      tasksByDate[dateStart].push(item);
+    }
+  });
+
+  // 날짜 정렬 (최신순)
+  const sortedDates = Object.keys(tasksByDate).sort((a, b) => b.localeCompare(a));
+
+  let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+
+  sortedDates.forEach(dateStr => {
+    const tasks = tasksByDate[dateStr];
+    const dateLabel = formatDateLabel(dateStr);
+
+    // 시간 통계 계산
+    let totalTarget = 0;
+    let totalActual = 0;
+
+    tasks.forEach(task => {
+      const targetTime = task.properties?.['목표 시간']?.number || 0;
+      totalTarget += targetTime;
+
+      const end = task.properties?.['끝']?.rich_text?.[0]?.plain_text || '';
+      if (end) {
+        const actualProp = task.properties?.['실제 시간'];
+        if (actualProp?.type === 'formula') {
+          if (actualProp.formula?.type === 'number') {
+            totalActual += actualProp.formula.number || 0;
+          } else if (actualProp.formula?.type === 'string') {
+            const str = actualProp.formula.string || '';
+            const hourMatch = str.match(/(\d+)시간/);
+            const minMatch = str.match(/(\d+)분/);
+            const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
+            const mins = minMatch ? parseInt(minMatch[1]) : 0;
+            totalActual += hours * 60 + mins;
+          }
+        }
+      }
+    });
+
+    const totalDiff = totalActual - totalTarget;
+    const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '-');
+    const diffAbs = Math.abs(totalDiff);
+    const diffColor = totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666';
+
+    html += `
+      <div style="background: #fff; border: 1px solid #e5e5e7; border-radius: 10px; padding: 12px;">
+        <div style="font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; cursor: pointer;" onclick="goToDate('${dateStr}')">${dateLabel}</div>
+        <div style="font-size: 11px; color: #86868b; line-height: 1.6;">
+          <div>목표 ${formatMinutesToTime(totalTarget)}</div>
+          <div>실제 ${formatMinutesToTime(totalActual)}</div>
+          <div style="color: ${diffColor};">(${diffSign}${formatMinutesToTime(diffAbs)})</div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+window.goToDate = function(dateStr) {
+  currentDate = new Date(dateStr);
+  plannerCalendarViewMode = false;
+  const viewToggle = document.getElementById('view-toggle');
+  viewToggle.textContent = '달력';
+  renderData();
+};
+
 function getDDayString() {
   if (!dDayDate) return '';
 
@@ -772,9 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
   const viewToggle = document.getElementById('view-toggle');
   viewToggle.addEventListener('click', () => {
-    viewMode = viewMode === 'timeline' ? 'task' : 'timeline';
-    viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
-    renderData();
+    togglePlannerCalendar();
   });
 }
 
@@ -932,11 +1025,7 @@ function renderData() {
   // D-Day 버튼 업데이트
   updateDDayButton();
 
-  if (viewMode === 'timeline') {
-    renderTimelineView();
-  } else {
-    renderTaskView();
-  }
+  renderTimelineView();
 }
 
 function updateDDayButton() {
