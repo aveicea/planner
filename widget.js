@@ -34,7 +34,14 @@ window.toggleDDay = function() {
   if (dateInput) {
     dDayDate = dateInput;
     localStorage.setItem('dDayDate', dateInput);
-    renderData();
+    updateDDayButton();
+    if (currentData) renderData();
+  } else if (dateInput === '') {
+    // 빈 문자열로 입력하면 D-Day 제거
+    dDayDate = null;
+    localStorage.removeItem('dDayDate');
+    updateDDayButton();
+    if (currentData) renderData();
   }
 };
 
@@ -867,10 +874,22 @@ function getCalendarItemTitle(item) {
 function renderData() {
   if (!currentData || !currentData.results) return;
 
+  // D-Day 버튼 업데이트
+  updateDDayButton();
+
   if (viewMode === 'timeline') {
     renderTimelineView();
   } else {
     renderTaskView();
+  }
+}
+
+function updateDDayButton() {
+  const ddayButton = document.getElementById('dday-button');
+  if (ddayButton) {
+    const dDayStr = getDDayString();
+    ddayButton.textContent = dDayStr || 'D-Day';
+    ddayButton.style.background = dDayDate ? '#999' : '#999';
   }
 }
 
@@ -936,7 +955,8 @@ function renderTimelineView() {
   });
 
   const totalDiff = totalActual - totalTarget;
-  const diffStr = totalDiff === 0 ? '±0' : (totalDiff > 0 ? `+${totalDiff}` : `${totalDiff}`);
+  const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '-');
+  const diffAbs = Math.abs(totalDiff);
 
   const content = document.getElementById('content');
   const dateLabel = formatDateLabelShort(targetDateStr);
@@ -947,10 +967,8 @@ function renderTimelineView() {
       <h3 class="section-title" style="margin: 0; cursor: pointer;" onclick="goToday()">${dateLabel} (${sortedTasks.length}개)</h3>
       <button onclick="changeDate(1)" style="font-size: 16px; padding: 4px 12px; color: #999;">▶</button>
     </div>
-    <div style="display: flex; gap: 8px; font-size: 11px; color: #86868b; margin-bottom: 12px; justify-content: center;">
-      <span>⏱ 목표 ${totalTarget}분</span>
-      <span>⏳ 실제 ${totalActual}분</span>
-      <span style="color: ${totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666'};">📊 ${diffStr}분</span>
+    <div style="font-size: 11px; color: #86868b; margin-bottom: 12px; text-align: center;">
+      목표 ${formatMinutesToTime(totalTarget)} / 실제 ${formatMinutesToTime(totalActual)} <span style="color: ${totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666'};">(${diffSign}${formatMinutesToTime(diffAbs)})</span>
     </div>
     <div class="task-list">
   `;
@@ -1095,25 +1113,20 @@ function renderTaskView() {
   });
 
   const totalDiff = totalActual - totalTarget;
-  const diffStr = totalDiff === 0 ? '±0' : (totalDiff > 0 ? `+${totalDiff}` : `${totalDiff}`);
+  const diffSign = totalDiff === 0 ? '±' : (totalDiff > 0 ? '+' : '-');
+  const diffAbs = Math.abs(totalDiff);
 
   const content = document.getElementById('content');
   const dateLabel = formatDateLabelShort(targetDateStr);
-  const dDayStr = getDDayString();
 
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <button onclick="changeDate(-1)" style="font-size: 16px; padding: 4px 12px; color: #999;">◀</button>
-      <div style="display: flex; align-items: center; gap: 4px;">
-        <h3 class="section-title" style="margin: 0; cursor: pointer;" onclick="goToday()">${dateLabel}</h3>
-        <button onclick="toggleDDay()" style="font-size: 11px; padding: 2px 6px; background: ${dDayDate ? '#007AFF' : '#ccc'}; color: white; border: none; border-radius: 4px; cursor: pointer;">${dDayStr || 'D-Day'}</button>
-      </div>
+      <h3 class="section-title" style="margin: 0; cursor: pointer;" onclick="goToday()">${dateLabel}</h3>
       <button onclick="changeDate(1)" style="font-size: 16px; padding: 4px 12px; color: #999;">▶</button>
     </div>
-    <div style="display: flex; gap: 8px; font-size: 11px; color: #86868b; margin-bottom: 12px; justify-content: center;">
-      <span>⏱ 목표 ${totalTarget}분</span>
-      <span>⏳ 실제 ${totalActual}분</span>
-      <span style="color: ${totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666'};">📊 ${diffStr}분</span>
+    <div style="font-size: 11px; color: #86868b; margin-bottom: 12px; text-align: center;">
+      목표 ${formatMinutesToTime(totalTarget)} / 실제 ${formatMinutesToTime(totalActual)} <span style="color: ${totalDiff > 0 ? '#FF3B30' : totalDiff < 0 ? '#34C759' : '#666'};">(${diffSign}${formatMinutesToTime(diffAbs)})</span>
     </div>
     <button onclick="addNewTask()" style="width: 100%; margin-bottom: 12px; padding: 8px; background: #999; color: white; border-radius: 8px; cursor: pointer; border: none; font-size: 13px;">+ 할일 추가</button>
     <div class="task-list" id="task-sortable">
@@ -1277,6 +1290,15 @@ function formatDateLabelShort(dateString) {
 function formatDateShort(dateString) {
   const date = new Date(dateString);
   return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function formatMinutesToTime(minutes) {
+  if (minutes === 0) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}분`;
+  if (mins === 0) return `${hours}시간`;
+  return `${hours}시간 ${mins}분`;
 }
 
 function updateLastUpdateTime() {
