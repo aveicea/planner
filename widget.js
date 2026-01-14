@@ -190,89 +190,101 @@ window.confirmEditTask = async function(taskId) {
   const startInput = document.getElementById('edit-task-start');
   const endInput = document.getElementById('edit-task-end');
   const ratingSelect = document.getElementById('edit-task-rating');
-  
+
   const title = titleInput.value.trim();
-  
+
   if (!title) {
     alert('제목을 입력해주세요!');
     return;
   }
-  
+
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
-  
-  try {
-    const properties = {
-      '범위': {
-        title: [{ text: { content: title } }]
-      }
-    };
-    
-    if (bookSelect.value) {
-      properties['책'] = { relation: [{ id: bookSelect.value }] };
-    } else {
-      properties['책'] = { relation: [] };
-    }
-    
-    if (timeInput.value) {
-      properties['목표 시간'] = { number: parseInt(timeInput.value) };
-    }
-    
-    if (dateInput.value) {
-      properties['날짜'] = { date: { start: dateInput.value } };
-    }
-    
-    if (startInput.value) {
-      const formattedStart = formatTimeInput(startInput.value);
-      properties['시작'] = { rich_text: [{ type: 'text', text: { content: formattedStart } }] };
-    }
 
-    if (endInput.value) {
-      const formattedEnd = formatTimeInput(endInput.value);
-      properties['끝'] = { rich_text: [{ type: 'text', text: { content: formattedEnd } }] };
+  // 바로 창 닫기
+  renderData();
+
+  // 백그라운드에서 업데이트
+  (async () => {
+    try {
+      const properties = {
+        '범위': {
+          title: [{ text: { content: title } }]
+        }
+      };
+
+      if (bookSelect.value) {
+        properties['책'] = { relation: [{ id: bookSelect.value }] };
+      } else {
+        properties['책'] = { relation: [] };
+      }
+
+      if (timeInput.value) {
+        properties['목표 시간'] = { number: parseInt(timeInput.value) };
+      }
+
+      if (dateInput.value) {
+        properties['날짜'] = { date: { start: dateInput.value } };
+      }
+
+      if (startInput.value) {
+        const formattedStart = formatTimeInput(startInput.value);
+        properties['시작'] = { rich_text: [{ type: 'text', text: { content: formattedStart } }] };
+      }
+
+      if (endInput.value) {
+        const formattedEnd = formatTimeInput(endInput.value);
+        properties['끝'] = { rich_text: [{ type: 'text', text: { content: formattedEnd } }] };
+      }
+
+      if (ratingSelect.value) {
+        properties['(੭•̀ᴗ•̀)੭'] = { select: { name: ratingSelect.value } };
+      } else {
+        properties['(੭•̀ᴗ•̀)੭'] = { select: null };
+      }
+
+      await updateNotionPage(taskId, properties);
+      setTimeout(() => fetchData(), 500);
+    } catch (error) {
+      alert('수정 실패: ' + error.message);
+      loading.textContent = '';
     }
-    
-    if (ratingSelect.value) {
-      properties['(੭•̀ᴗ•̀)੭'] = { select: { name: ratingSelect.value } };
-    } else {
-      properties['(੭•̀ᴗ•̀)੭'] = { select: null };
-    }
-    
-    await updateNotionPage(taskId, properties);
-    setTimeout(() => fetchData(), 500);
-  } catch (error) {
-    alert('수정 실패: ' + error.message);
-    loading.textContent = '';
-  }
+  })();
 };
 
 window.deleteTask = async function(taskId) {
   if (!confirm('정말 삭제하시겠습니까?')) return;
-  
+
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
-  
-  try {
-    const notionUrl = `https://api.notion.com/v1/pages/${taskId}`;
-    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${NOTION_API_KEY}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        archived: true
-      })
-    });
 
-    if (!response.ok) throw new Error('삭제 실패');
+  // 바로 창 닫기
+  renderData();
 
-    setTimeout(() => fetchData(), 500);
-  } catch (error) {
-    alert('삭제 실패: ' + error.message);
-    loading.textContent = '';
-  }
+  // 백그라운드에서 삭제
+  (async () => {
+    try {
+      const notionUrl = `https://api.notion.com/v1/pages/${taskId}`;
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          archived: true
+        })
+      });
+
+      if (!response.ok) throw new Error('삭제 실패');
+
+      setTimeout(() => fetchData(), 500);
+    } catch (error) {
+      alert('삭제 실패: ' + error.message);
+      loading.textContent = '';
+    }
+  })();
 };
 
 window.cancelEdit = function() {
@@ -1152,7 +1164,7 @@ function formatDateLabel(dateString) {
   const date = new Date(dateString);
   const days = ['일', '월', '화', '수', '목', '금', '토'];
   const dayOfWeek = days[date.getDay()];
-  return `${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayOfWeek})`;
 }
 
 function formatDateShort(dateString) {
@@ -1315,14 +1327,14 @@ function renderCalendarView() {
     }
   });
 
-  // 날짜 필터링: calendarStartDate부터 calendarEndDate까지
-  const filteredDates = Object.keys(groupedByDate).filter(dateStr => {
-    const date = new Date(dateStr);
-    return date >= calendarStartDate && date < calendarEndDate;
-  });
-
-  // 날짜 정렬 (오름차순)
-  const sortedDates = filteredDates.sort();
+  // calendarStartDate부터 calendarEndDate까지 모든 날짜 생성
+  const allDates = [];
+  const currentLoopDate = new Date(calendarStartDate);
+  while (currentLoopDate < calendarEndDate) {
+    const dateStr = currentLoopDate.toISOString().split('T')[0];
+    allDates.push(dateStr);
+    currentLoopDate.setDate(currentLoopDate.getDate() + 1);
+  }
 
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -1332,31 +1344,35 @@ function renderCalendarView() {
     <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">⬆ 이전 2주 더보기</button>
   `;
 
-  sortedDates.forEach(dateStr => {
-    const items = groupedByDate[dateStr];
+  allDates.forEach(dateStr => {
+    const items = groupedByDate[dateStr] || [];
     const dateLabel = formatDateLabel(dateStr);
 
     html += `
       <div style="margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <h4 style="font-size: 13px; font-weight: 600; color: #666; margin: 0;">${dateLabel}</h4>
-          <button onclick="saveToPlanner('${dateStr}')" style="background: #999; color: white; border: none; border-radius: 4px; padding: 4px 12px; font-size: 11px; cursor: pointer;">💾 저장</button>
+          ${items.length > 0 ? `<button onclick="saveToPlanner('${dateStr}')" style="background: #999; color: white; border: none; border-radius: 4px; padding: 4px 12px; font-size: 11px; cursor: pointer;">💾 저장</button>` : ''}
         </div>
         <div class="calendar-date-group" data-date="${dateStr}">
     `;
 
-    items.forEach(item => {
-      const title = getCalendarItemTitle(item);
-      const bookRelation = item.properties?.['책']?.relation?.[0];
-      const bookName = bookRelation && bookNames[bookRelation.id] ? bookNames[bookRelation.id] : '';
-      const displayTitle = bookName ? `[${bookName}] ${title}` : title;
+    if (items.length === 0) {
+      html += `<div style="font-size: 11px; color: #999; padding: 8px;">일정 없음</div>`;
+    } else {
+      items.forEach(item => {
+        const title = getCalendarItemTitle(item);
+        const bookRelation = item.properties?.['책']?.relation?.[0];
+        const bookName = bookRelation && bookNames[bookRelation.id] ? bookNames[bookRelation.id] : '';
+        const displayTitle = bookName ? `[${bookName}] ${title}` : title;
 
-      html += `
-        <div class="calendar-item" draggable="true" data-id="${item.id}" data-date="${dateStr}">
-          <div style="font-size: 12px; color: #333;">${displayTitle}</div>
-        </div>
-      `;
-    });
+        html += `
+          <div class="calendar-item" draggable="true" data-id="${item.id}" data-date="${dateStr}">
+            <div style="font-size: 12px; color: #333;">${displayTitle}</div>
+          </div>
+        `;
+      });
+    }
 
     html += `
         </div>
