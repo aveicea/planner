@@ -1310,6 +1310,168 @@ window.saveToPlanner = async function(dateStr) {
   }
 };
 
+window.syncPlannerToCalendar = async function() {
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    // 플래너의 모든 항목 가져오기
+    const plannerItems = currentData.results;
+
+    // 날짜별로 그룹화
+    const itemsByDate = {};
+    plannerItems.forEach(item => {
+      const dateStart = item.properties?.['날짜']?.date?.start;
+      if (dateStart) {
+        if (!itemsByDate[dateStart]) {
+          itemsByDate[dateStart] = [];
+        }
+        itemsByDate[dateStart].push(item);
+      }
+    });
+
+    // 각 날짜별로 원본만 필터링
+    const originalItems = [];
+    for (const [dateStr, items] of Object.entries(itemsByDate)) {
+      // 책+제목 조합으로 그룹화
+      const titleGroups = {};
+      items.forEach(item => {
+        const title = item.properties?.['범위']?.title?.[0]?.plain_text || '';
+        const bookId = item.properties?.['책']?.relation?.[0]?.id || 'no-book';
+
+        // 제목에서 ', (2), (3) 등 제거하여 base 제목 추출
+        const baseTitle = title.replace(/['']/g, '').replace(/\s*\(\d+\)\s*$/, '').trim();
+        const key = `${bookId}:${baseTitle}`;
+
+        if (!titleGroups[key]) {
+          titleGroups[key] = [];
+        }
+        titleGroups[key].push(item);
+      });
+
+      // 각 그룹에서 가장 먼저 생성된 항목만 선택
+      for (const group of Object.values(titleGroups)) {
+        group.sort((a, b) => {
+          const timeA = new Date(a.created_time || 0);
+          const timeB = new Date(b.created_time || 0);
+          return timeA - timeB;
+        });
+        originalItems.push(group[0]); // 가장 오래된 것(원본)만 추가
+      }
+    }
+
+    // 프리플랜에 이미 있는 항목 맵 (제목+책 → 항목)
+    const existingCalendarItemsMap = new Map();
+    calendarData.results.forEach(item => {
+      const title = getCalendarItemTitle(item);
+      const bookId = item.properties?.['책']?.relation?.[0]?.id || 'no-book';
+      const key = `${bookId}:${title}`;
+      existingCalendarItemsMap.set(key, item);
+    });
+
+    // 프리플랜에 복사 또는 업데이트
+    let syncCount = 0;
+    let updateCount = 0;
+    for (const item of originalItems) {
+      const title = item.properties?.['범위']?.title?.[0]?.plain_text || '';
+      const dateStart = item.properties?.['날짜']?.date?.start;
+      const bookRelation = item.properties?.['책']?.relation?.[0];
+      const bookId = bookRelation?.id || 'no-book';
+
+      // 이미 존재하는지 확인
+      const itemKey = `${bookId}:${title}`;
+      const existingItem = existingCalendarItemsMap.get(itemKey);
+
+      if (existingItem) {
+        // 이미 있으면 날짜 확인
+        const existingDate = existingItem.properties?.['날짜']?.date?.start;
+        if (existingDate !== dateStart) {
+          // 날짜가 다르면 업데이트
+          const notionUrl = `https://api.notion.com/v1/pages/${existingItem.id}`;
+          const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${NOTION_API_KEY}`,
+              'Notion-Version': '2022-06-28',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              properties: {
+                '날짜': { date: { start: dateStart } }
+              }
+            })
+          });
+
+          if (response.ok) {
+            updateCount++;
+          }
+        }
+        continue; // 이미 있으면 새로 생성은 하지 않음
+      }
+
+      // 프리플랜에 생성 (pre-plan 속성 사용)
+      const properties = {
+        '날짜': {
+          date: { start: dateStart }
+        }
+      };
+
+      // pre-plan 속성이 title 타입인지 확인 후 사용
+      // 일단 기본 title 속성으로 시도
+      for (const [key, value] of Object.entries(calendarData.results[0]?.properties || {})) {
+        if (value.type === 'title') {
+          properties[key] = {
+            title: [{ text: { content: title } }]
+          };
+          break;
+        }
+      }
+
+      if (bookRelation) {
+        properties['책'] = { relation: [{ id: bookRelation.id }] };
+      }
+
+      const notionUrl = 'https://api.notion.com/v1/pages';
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          parent: { database_id: CALENDAR_DB_ID },
+          properties: properties
+        })
+      });
+
+      if (response.ok) {
+        syncCount++;
+      }
+    }
+
+    let message = '';
+    if (syncCount > 0 && updateCount > 0) {
+      message = `✅ ${syncCount}개 추가, ${updateCount}개 날짜 수정`;
+    } else if (syncCount > 0) {
+      message = `✅ ${syncCount}개 추가됨`;
+    } else if (updateCount > 0) {
+      message = `✅ ${updateCount}개 날짜 수정됨`;
+    } else {
+      message = '✅ 이미 모두 동기화되어 있습니다';
+    }
+
+    alert(message);
+    await fetchCalendarData();
+    renderCalendarView();
+  } catch (error) {
+    console.error('Sync error:', error);
+    alert('동기화 실패: ' + error.message);
+  } finally {
+    loading.textContent = '';
+  }
+};
+
 function renderCalendarView() {
   if (!calendarData || !calendarData.results) return;
 
@@ -1341,6 +1503,7 @@ function renderCalendarView() {
       <h3 class="section-title" style="margin: 0;">📅 달력</h3>
       <button onclick="toggleCalendarView()" style="font-size: 12px; padding: 4px 8px;">닫기</button>
     </div>
+    <button onclick="syncPlannerToCalendar()" style="width: 100%; background: #007AFF; color: white; border: none; border-radius: 4px; padding: 8px; font-size: 12px; cursor: pointer; margin-bottom: 8px; font-weight: 600;">🔄 플래너 동기화</button>
     <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">⬆ 이전 2주 더보기</button>
   `;
 
