@@ -1273,10 +1273,8 @@ function renderTimelineView() {
           </div>
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; gap: 8px; font-size: 11px; color: #86868b;">
-              <span>목표 ${targetTime}분</span>
-              <span>실제 ${actualTime}분</span>
-              ${diffStr ? `<span>계획 ${diffStr}분</span>` : ''}
+            <div style="font-size: 11px; color: #86868b;">
+              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? ` <span style="color: ${actualTime - targetTime > 0 ? '#FF3B30' : actualTime - targetTime < 0 ? '#34C759' : '#666'};">(${actualTime - targetTime > 0 ? '+' : ''}${formatMinutesToTime(Math.abs(actualTime - targetTime))})</span>` : ''}
             </div>
             <span style="cursor: pointer; font-size: 16px; position: relative; display: inline-block; width: 20px; height: 20px; flex-shrink: 0;">
               →
@@ -1628,12 +1626,13 @@ async function fetchDDayData() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        page_size: 100,
-        sorts: [{ property: "날짜", direction: "ascending" }]
+        page_size: 100
       })
     });
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('D-Day API Error:', errorData);
       throw new Error(`D-Day API Error: ${response.status}`);
     }
 
