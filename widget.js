@@ -319,9 +319,8 @@ function renderPlannerCalendarHTML() {
       ">
         <div style="font-size: 12px; font-weight: 600; color: ${isToday ? '#333' : dayColor}; margin-bottom: 4px;">${date}</div>
         <div style="font-size: 9px; color: #86868b; line-height: 1.4; text-align: right;">
-          <div>${formatMinutesToClock(totalTarget)}</div>
           <div>${formatMinutesToClock(totalActual)}</div>
-          <div style="color: ${diffColor}; font-weight: 600;">${totalDiff === 0 ? formatMinutesToClock(0) : formatMinutesToClock(totalDiff)}</div>
+          <div style="color: ${diffColor}; font-weight: 600;">(${totalDiff === 0 ? formatMinutesToClock(0) : formatMinutesToClock(totalDiff)})</div>
         </div>
       </div>
     `;
