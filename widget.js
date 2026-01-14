@@ -112,6 +112,46 @@ window.clearDDay = function() {
   renderData();
 };
 
+function autoSelectClosestDDay() {
+  if (!ddayData || !ddayData.results) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
+  const futureDDays = ddayData.results.filter(item => {
+    if (item.properties?.['디데이 표시']?.checkbox !== true) return false;
+
+    const dateStr = item.properties?.['날짜']?.date?.start;
+    if (!dateStr) return false;
+
+    const itemDate = new Date(dateStr);
+    itemDate.setHours(0, 0, 0, 0);
+
+    return itemDate >= today;
+  });
+
+  if (futureDDays.length === 0) return;
+
+  // 날짜순 정렬 (가장 가까운 날짜 찾기)
+  futureDDays.sort((a, b) => {
+    const dateA = new Date(a.properties?.['날짜']?.date?.start);
+    const dateB = new Date(b.properties?.['날짜']?.date?.start);
+    return dateA - dateB;
+  });
+
+  // 가장 가까운 D-Day 선택
+  const closestDDay = futureDDays[0];
+  const title = closestDDay.properties?.['제목']?.title?.[0]?.plain_text || '제목 없음';
+  const date = closestDDay.properties?.['날짜']?.date?.start || '';
+
+  dDayDate = date;
+  dDayTitle = title;
+  localStorage.setItem('dDayDate', date);
+  localStorage.setItem('dDayTitle', title);
+  updateDDayButton();
+}
+
 let plannerCalendarViewMode = false;
 
 window.togglePlannerCalendar = function() {
@@ -920,7 +960,9 @@ window.updateRating = async function(taskId, value) {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await fetchDDayData();
+  autoSelectClosestDDay();
   fetchData();
   setupEventListeners();
   setInterval(fetchData, 300000);
