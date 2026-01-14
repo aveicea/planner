@@ -152,6 +152,12 @@ function autoSelectClosestDDay() {
 
   console.log('D-Day data results:', ddayData.results.length);
 
+  // 첫 번째 항목의 속성 구조 확인
+  if (ddayData.results.length > 0) {
+    console.log('First item properties:', Object.keys(ddayData.results[0].properties));
+    console.log('Full first item:', JSON.stringify(ddayData.results[0], null, 2));
+  }
+
   // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
   const futureDDays = ddayData.results.filter(item => {
     const hasCheckbox = item.properties?.['디데이 표시']?.checkbox === true;
