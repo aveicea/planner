@@ -1099,6 +1099,10 @@ function renderTimelineView() {
 
   const sortedTasks = [...sortTasks(incompleteTasks), ...sortTasks(completedTasks)];
 
+  // 완료 개수 계산
+  const completedCount = sortedTasks.filter(t => t.properties?.['완료']?.checkbox).length;
+  const totalCount = sortedTasks.length;
+
   // 시간 통계 계산
   let totalTarget = 0;
   let totalActual = 0;
@@ -1134,7 +1138,7 @@ function renderTimelineView() {
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <button onclick="changeDate(-1)" style="font-size: 16px; padding: 4px 12px; color: #999;">◀</button>
-      <h3 class="section-title" style="margin: 0; cursor: pointer;" onclick="goToday()">${dateLabel} (${sortedTasks.length}개)</h3>
+      <h3 class="section-title" style="margin: 0; cursor: pointer;" onclick="goToday()">${dateLabel} (${completedCount}개/${totalCount}개)</h3>
       <button onclick="changeDate(1)" style="font-size: 16px; padding: 4px 12px; color: #999;">▶</button>
     </div>
     <div style="font-size: 11px; color: #86868b; margin-bottom: 12px; text-align: center;">
@@ -1344,10 +1348,13 @@ function renderTaskView() {
 function initSortable() {
   const container = document.getElementById('task-sortable');
   if (!container) return;
-  
+
   let draggedItem = null;
   let dragStartIndex = -1;
-  
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+
+  // 마우스 드래그
   container.addEventListener('dragstart', (e) => {
     if (e.target.classList.contains('task-item')) {
       draggedItem = e.target;
@@ -1355,19 +1362,21 @@ function initSortable() {
       e.target.style.opacity = '0.5';
     }
   });
-  
+
   container.addEventListener('dragend', async (e) => {
     if (e.target.classList.contains('task-item')) {
       e.target.style.opacity = '1';
-      
+
       const dragEndIndex = Array.from(container.children).indexOf(draggedItem);
-      
+
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
+        // 타임테이블 순서도 반영하기 위해 데이터 새로고침
+        setTimeout(() => fetchData(), 500);
       }
     }
   });
-  
+
   container.addEventListener('dragover', (e) => {
     e.preventDefault();
     const afterElement = getDragAfterElement(container, e.clientY);
@@ -1377,9 +1386,47 @@ function initSortable() {
       container.insertBefore(draggedItem, afterElement);
     }
   });
-  
+
+  // 터치 드래그 (모바일)
   container.querySelectorAll('.task-item').forEach(item => {
     item.setAttribute('draggable', 'true');
+
+    item.addEventListener('touchstart', (e) => {
+      draggedItem = item;
+      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
+      touchStartY = e.touches[0].clientY;
+      item.style.opacity = '0.5';
+      item.style.position = 'relative';
+      item.style.zIndex = '1000';
+    });
+
+    item.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      touchCurrentY = e.touches[0].clientY;
+      const afterElement = getDragAfterElement(container, touchCurrentY);
+
+      if (afterElement == null) {
+        container.appendChild(draggedItem);
+      } else {
+        container.insertBefore(draggedItem, afterElement);
+      }
+    });
+
+    item.addEventListener('touchend', async (e) => {
+      item.style.opacity = '1';
+      item.style.position = '';
+      item.style.zIndex = '';
+
+      const dragEndIndex = Array.from(container.children).indexOf(draggedItem);
+
+      if (dragStartIndex !== dragEndIndex) {
+        await updateTaskOrder();
+        // 타임테이블 순서도 반영하기 위해 데이터 새로고침
+        setTimeout(() => fetchData(), 500);
+      }
+
+      draggedItem = null;
+    });
   });
 }
 
@@ -1524,13 +1571,7 @@ async function fetchDDayData() {
       },
       body: JSON.stringify({
         page_size: 100,
-        sorts: [{ property: "날짜", direction: "ascending" }],
-        filter: {
-          property: "디데이 표시",
-          checkbox: {
-            equals: true
-          }
-        }
+        sorts: [{ property: "날짜", direction: "ascending" }]
       })
     });
 
