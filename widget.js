@@ -206,6 +206,13 @@ window.changeCalendarMonth = function(delta) {
   renderCalendarView();
 };
 
+window.goToCurrentMonth = function() {
+  const now = new Date();
+  calendarViewYear = now.getFullYear();
+  calendarViewMonth = now.getMonth();
+  renderCalendarView();
+};
+
 function renderPlannerCalendarHTML() {
   if (!currentData || !currentData.results) return '';
 
@@ -241,7 +248,7 @@ function renderPlannerCalendarHTML() {
     <div style="padding: 12px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <button onclick="changeCalendarMonth(-1)" style="font-size: 16px; padding: 4px 8px; background: none; border: none; cursor: pointer; color: #999;">◀</button>
-        <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${year}년 ${month + 1}월</h3>
+        <h3 onclick="goToCurrentMonth()" style="margin: 0; font-size: 16px; font-weight: 600; cursor: pointer;">${year}년 ${month + 1}월</h3>
         <button onclick="changeCalendarMonth(1)" style="font-size: 16px; padding: 4px 8px; background: none; border: none; cursor: pointer; color: #999;">▶</button>
       </div>
 
@@ -302,19 +309,18 @@ function renderPlannerCalendarHTML() {
 
     html += `
       <div onclick="goToDate('${dateStr}')" style="
-        background: ${isToday ? '#007AFF' : '#f5f5f7'};
-        border: 1px solid ${isToday ? '#007AFF' : '#e5e5e7'};
+        background: ${isToday ? '#d0d0d0' : '#f5f5f7'};
+        border: 1px solid ${isToday ? '#c0c0c0' : '#e5e5e7'};
         border-radius: 8px;
         padding: 6px;
         min-height: 70px;
         cursor: pointer;
         opacity: ${isCurrentMonth ? '1' : '0.3'};
       ">
-        <div style="font-size: 12px; font-weight: 600; color: ${isToday ? 'white' : dayColor}; margin-bottom: 4px;">${date}</div>
-        <div style="font-size: 9px; color: ${isToday ? 'rgba(255,255,255,0.9)' : '#86868b'}; line-height: 1.4; text-align: right;">
-          <div>${formatMinutesToClock(totalTarget)}</div>
+        <div style="font-size: 12px; font-weight: 600; color: ${isToday ? '#333' : dayColor}; margin-bottom: 4px;">${date}</div>
+        <div style="font-size: 9px; color: #86868b; line-height: 1.4; text-align: right;">
           <div>${formatMinutesToClock(totalActual)}</div>
-          <div style="color: ${isToday ? 'white' : diffColor}; font-weight: 600;">${totalDiff === 0 ? formatMinutesToClock(0) : formatMinutesToClock(totalDiff)}</div>
+          <div style="color: ${diffColor}; font-weight: 600;">(${totalDiff === 0 ? formatMinutesToClock(0) : formatMinutesToClock(totalDiff)})</div>
         </div>
       </div>
     `;
