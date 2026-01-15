@@ -348,10 +348,10 @@ function renderPlannerCalendarHTML() {
   `;
 
   const currentLoop = new Date(calendarStart);
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = formatDateToLocalString(today);
 
   while (currentLoop <= calendarEnd) {
-    const dateStr = currentLoop.toISOString().split('T')[0];
+    const dateStr = formatDateToLocalString(currentLoop);
     const date = currentLoop.getDate();
     const isCurrentMonth = currentLoop.getMonth() === month;
     const isToday = dateStr === todayStr;
@@ -778,7 +778,7 @@ window.confirmAddTask = async function() {
   loading.textContent = '⏳';
   
   try {
-    const todayDate = currentDate.toISOString().split('T')[0];
+    const todayDate = formatDateToLocalString(currentDate);
     
     const properties = {
       '범위': {
@@ -1531,7 +1531,7 @@ function updateDDayButton() {
 }
 
 function renderTimelineView() {
-  const targetDateStr = currentDate.toISOString().split('T')[0];
+  const targetDateStr = formatDateToLocalString(currentDate);
 
   const dayTasks = currentData.results.filter(item => {
     const dateStart = item.properties?.['날짜']?.date?.start;
@@ -1691,12 +1691,7 @@ function renderTimelineView() {
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="font-size: 11px; color: #86868b;">
-              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? (() => {
-                const diff = actualTime - targetTime;
-                if (diff === 0) return '';
-                const sign = diff > 0 ? '+' : '-';
-                return ` (${sign}${formatMinutesToTime(Math.abs(diff))})`;
-              })() : ''}
+              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? ` (${actualTime - targetTime > 0 ? '+' : ''}${formatMinutesToTime(Math.abs(actualTime - targetTime))})` : ''}
             </div>
             ${!completed ? `
               <div style="display: flex; gap: 16px; align-items: center;">
@@ -1722,7 +1717,7 @@ function renderTimelineView() {
 }
 
 function renderTaskView() {
-  const targetDateStr = currentDate.toISOString().split('T')[0];
+  const targetDateStr = formatDateToLocalString(currentDate);
 
   // 날짜 필터
   const dayTasks = currentData.results.filter(item => {
@@ -2047,6 +2042,14 @@ function formatDateLabelShort(dateString) {
 function formatDateShort(dateString) {
   const date = new Date(dateString);
   return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function formatDateToLocalString(date) {
+  // 로컬 날짜를 YYYY-MM-DD 형식으로 변환 (UTC 변환 없이)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatMinutesToTime(minutes) {
