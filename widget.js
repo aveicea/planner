@@ -10,7 +10,6 @@ let calendarData = null;
 let ddayData = null;
 let bookNames = {};
 let currentDate = new Date();
-currentDate.setHours(0, 0, 0, 0); // 초기화 시 시간을 00:00:00으로 설정
 let calendarViewMode = false;
 let calendarStartDate = new Date();
 let calendarEndDate = new Date();
@@ -421,10 +420,11 @@ function renderPlannerCalendarHTML() {
 }
 
 window.goToDate = function(dateStr) {
-  // YYYY-MM-DD 형식을 로컬 날짜로 변환
+  // YYYY-MM-DD 형식을 로컬 날짜로 변환 (하루 더하기)
   const [year, month, day] = dateStr.split('-').map(Number);
   currentDate = new Date(year, month - 1, day);
-  currentDate.setHours(0, 0, 0, 0); // 시간을 명시적으로 00:00:00으로 설정
+  currentDate.setDate(currentDate.getDate() + 1); // 하루 더하기
+  currentDate.setHours(0, 0, 0, 0);
   calendarViewMode = false;
   plannerCalendarViewMode = false;
   const viewToggle = document.getElementById('view-toggle');
@@ -449,27 +449,8 @@ function getDDayString() {
 }
 
 window.toggleCalendarView = async function(targetDate = null) {
-  const viewToggle = document.getElementById('view-toggle');
-
-  // targetDate가 있으면 날짜를 설정하고 캘린더 뷰에서 나가기
-  if (targetDate) {
-    // YYYY-MM-DD 형식을 로컬 날짜로 변환
-    const [year, month, day] = targetDate.split('-').map(Number);
-    currentDate = new Date(year, month - 1, day);
-    currentDate.setHours(0, 0, 0, 0); // 시간을 명시적으로 00:00:00으로 설정
-    calendarViewMode = false;
-    plannerCalendarViewMode = false;
-    viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
-    // 디버깅: 날짜 확인
-    console.log('toggleCalendarView - targetDate:', targetDate);
-    console.log('toggleCalendarView - currentDate:', currentDate);
-    console.log('toggleCalendarView - formatDateToLocalString:', formatDateToLocalString(currentDate));
-    renderData();
-    return;
-  }
-
-  // targetDate가 없으면 일반 토글
   calendarViewMode = !calendarViewMode;
+  const viewToggle = document.getElementById('view-toggle');
 
   if (calendarViewMode) {
     // 프리플랜으로 진입
@@ -487,6 +468,14 @@ window.toggleCalendarView = async function(targetDate = null) {
     // 프리플랜에서 나가기
     plannerCalendarViewMode = false;
     viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
+
+    // targetDate가 있으면 해당 날짜로 이동 (하루 더하기)
+    if (targetDate) {
+      const [year, month, day] = targetDate.split('-').map(Number);
+      currentDate = new Date(year, month - 1, day);
+      currentDate.setDate(currentDate.getDate() + 1); // 하루 더하기
+      currentDate.setHours(0, 0, 0, 0);
+    }
     renderData();
   }
 };
@@ -1548,10 +1537,7 @@ function updateDDayButton() {
 }
 
 function renderTimelineView() {
-  const targetDateStr = formatDateToLocalString(currentDate);
-  // 디버깅: 날짜 확인
-  console.log('renderTimelineView - currentDate:', currentDate);
-  console.log('renderTimelineView - targetDateStr:', targetDateStr);
+  const targetDateStr = currentDate.toISOString().split('T')[0];
 
   const dayTasks = currentData.results.filter(item => {
     const dateStart = item.properties?.['날짜']?.date?.start;
@@ -1742,7 +1728,7 @@ function renderTimelineView() {
 }
 
 function renderTaskView() {
-  const targetDateStr = formatDateToLocalString(currentDate);
+  const targetDateStr = currentDate.toISOString().split('T')[0];
 
   // 날짜 필터
   const dayTasks = currentData.results.filter(item => {
