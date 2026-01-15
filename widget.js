@@ -1030,10 +1030,16 @@ window.updateRating = async function(taskId, value) {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await fetchDDayData();
-  autoSelectClosestDDay();
-  fetchData();
   setupEventListeners();
+
+  // 메인 데이터와 D-Day 데이터를 동시에 로딩
+  const [mainData, ddayData] = await Promise.all([
+    fetchData(),
+    fetchDDayData().then(() => autoSelectClosestDDay()).catch(err => {
+      console.error('D-Day loading failed:', err);
+    })
+  ]);
+
   setInterval(fetchData, 300000);
 
   setInterval(() => {
