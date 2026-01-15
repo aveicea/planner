@@ -1525,10 +1525,9 @@ function renderTaskView() {
             <div style="font-size: 11px; color: #86868b; margin-top: 6px; display: flex; gap: 8px; align-items: center;">
               ${priority ? `<span style="background: #999; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${priority}</span>` : ''}
               <span style="display: flex; align-items: center; gap: 4px;">
-                <span style="font-size: 11px;">⏱</span>
                 <input type="number" value="${targetTime || 0}"
                   onblur="updateTargetTimeInTask('${task.id}', this.value)"
-                  style="width: 55px; padding: 6px; border: 1px solid #e5e5e7; border-radius: 4px; text-align: center; font-size: 11px; background: white;">
+                  style="width: 45px; padding: 4px; border: 1px solid #e5e5e7; border-radius: 4px; text-align: center; font-size: 11px;">
                 <span style="font-size: 11px;">분</span>
               </span>
               ${dateStart ? `<span style="font-size: 10px;">${formatDateShort(dateStart)}</span>` : ''}
@@ -2184,7 +2183,7 @@ function renderCalendarView() {
 
         html += `
           <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="display: flex; align-items: center;">
-            <div class="drag-handle" style="width: 70px; cursor: move; background: rgba(200,200,200,0.1); user-select: none; -webkit-user-select: none; touch-action: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 10px;">⋮⋮</div>
+            <div class="drag-handle" style="width: 70px; cursor: move; opacity: 0; user-select: none; -webkit-user-select: none; touch-action: none; flex-shrink: 0;"></div>
             <div style="font-size: 12px; color: #333; flex: 1; margin-left: -62px;">${displayTitle}</div>
           </div>
         `;
