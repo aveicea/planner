@@ -1517,9 +1517,9 @@ function renderTaskView() {
     const completed = task.properties?.['완료']?.checkbox;
 
     html += `
-      <div class="task-item ${completed ? 'completed' : ''}" data-id="${task.id}" style="border-left: 3px solid #999; display: flex;">
-        <div class="drag-handle" style="width: 70px; cursor: move; opacity: 0; user-select: none; -webkit-user-select: none; touch-action: none; flex-shrink: 0;"></div>
-        <div class="task-header" style="flex: 1; margin-left: -62px;">
+      <div class="task-item ${completed ? 'completed' : ''}" data-id="${task.id}" style="border-left: 3px solid #999; position: relative; padding: 12px;">
+        <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 80px; cursor: move; background: rgba(200,200,200,0.3); user-select: none; -webkit-user-select: none; touch-action: none; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; color: #999;">⋮⋮</div>
+        <div class="task-header" style="flex: 1;">
           <div class="task-content" style="flex: 1;">
             <div class="task-title ${completed ? 'completed' : ''}" style="cursor: pointer;" onclick="editTask('${task.id}')">${title}</div>
             <div style="font-size: 11px; color: #86868b; margin-top: 6px; display: flex; gap: 8px; align-items: center;">
