@@ -1489,8 +1489,9 @@ function renderTaskView() {
     const completed = task.properties?.['완료']?.checkbox;
 
     html += `
-      <div class="task-item ${completed ? 'completed' : ''}" data-id="${task.id}" style="border-left: 3px solid #999; cursor: move;">
-        <div class="task-header">
+      <div class="task-item ${completed ? 'completed' : ''}" data-id="${task.id}" style="border-left: 3px solid #999; display: flex; gap: 8px;">
+        <div class="drag-handle" style="cursor: move; color: #999; font-size: 16px; display: flex; align-items: center; user-select: none; -webkit-user-select: none;">≡</div>
+        <div class="task-header" style="flex: 1;">
           <div class="task-content" style="flex: 1;">
             <div class="task-title ${completed ? 'completed' : ''}" style="cursor: pointer;" onclick="editTask('${task.id}')">${title}</div>
             <div style="font-size: 11px; color: #86868b; margin-top: 6px; display: flex; gap: 8px; align-items: center;">
@@ -1529,76 +1530,42 @@ function initSortable() {
   let touchStartY = 0;
   let touchCurrentY = 0;
 
-  // 마우스 드래그
-  container.addEventListener('dragstart', (e) => {
-    if (e.target.classList.contains('task-item')) {
-      draggedItem = e.target;
-      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
-      e.target.style.opacity = '0.5';
-    }
-  });
+  // 각 아이템에 드래그 핸들 설정
+  container.querySelectorAll('.task-item').forEach(item => {
+    const handle = item.querySelector('.drag-handle');
+    if (!handle) return;
 
-  container.addEventListener('dragend', async (e) => {
-    if (e.target.classList.contains('task-item')) {
-      e.target.style.opacity = '1';
+    handle.setAttribute('draggable', 'true');
+
+    // 마우스 드래그 (데스크톱)
+    handle.addEventListener('dragstart', (e) => {
+      draggedItem = item;
+      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
+      item.style.opacity = '0.5';
+    });
+
+    handle.addEventListener('dragend', async (e) => {
+      item.style.opacity = '1';
 
       const dragEndIndex = Array.from(container.children).indexOf(draggedItem);
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        // 타임테이블 순서도 반영하기 위해 데이터 새로고침
         setTimeout(() => fetchData(), 500);
       }
-    }
-  });
+    });
 
-  container.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    const afterElement = getDragAfterElement(container, e.clientY);
-    if (afterElement == null) {
-      container.appendChild(draggedItem);
-    } else {
-      container.insertBefore(draggedItem, afterElement);
-    }
-  });
-
-  // 터치 드래그 (모바일)
-  container.querySelectorAll('.task-item').forEach(item => {
-    item.setAttribute('draggable', 'true');
-
-    let touchTimer = null;
-    let isDraggingEnabled = false;
-
-    item.addEventListener('touchstart', (e) => {
+    // 터치 드래그 (모바일)
+    handle.addEventListener('touchstart', (e) => {
+      draggedItem = item;
+      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
       touchStartY = e.touches[0].clientY;
-      isDraggingEnabled = false;
-
-      // 1500ms 후에 드래그 활성화
-      touchTimer = setTimeout(() => {
-        isDraggingEnabled = true;
-        draggedItem = item;
-        dragStartIndex = Array.from(container.children).indexOf(draggedItem);
-        item.style.opacity = '0.5';
-        item.style.position = 'relative';
-        item.style.zIndex = '1000';
-
-        // 진동 피드백 (지원하는 경우)
-        if (navigator.vibrate) {
-          navigator.vibrate(50);
-        }
-      }, 1500);
+      item.style.opacity = '0.5';
+      item.style.position = 'relative';
+      item.style.zIndex = '1000';
     }, { passive: true });
 
-    item.addEventListener('touchmove', (e) => {
-      if (!isDraggingEnabled) {
-        // 드래그 활성화 전에 움직이면 타이머 취소
-        if (touchTimer) {
-          clearTimeout(touchTimer);
-          touchTimer = null;
-        }
-        return;
-      }
-
+    handle.addEventListener('touchmove', (e) => {
       e.preventDefault();
       touchCurrentY = e.touches[0].clientY;
       const afterElement = getDragAfterElement(container, touchCurrentY);
@@ -1610,16 +1577,7 @@ function initSortable() {
       }
     }, { passive: false });
 
-    item.addEventListener('touchend', async (e) => {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-
-      if (!isDraggingEnabled) {
-        return;
-      }
-
+    handle.addEventListener('touchend', async (e) => {
       item.style.opacity = '1';
       item.style.position = '';
       item.style.zIndex = '';
@@ -1628,29 +1586,21 @@ function initSortable() {
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        // 타임테이블 순서도 반영하기 위해 데이터 새로고침
         setTimeout(() => fetchData(), 500);
       }
 
       draggedItem = null;
-      isDraggingEnabled = false;
     });
+  });
 
-    item.addEventListener('touchcancel', (e) => {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-
-      if (isDraggingEnabled) {
-        item.style.opacity = '1';
-        item.style.position = '';
-        item.style.zIndex = '';
-      }
-
-      draggedItem = null;
-      isDraggingEnabled = false;
-    });
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(container, e.clientY);
+    if (afterElement == null && draggedItem) {
+      container.appendChild(draggedItem);
+    } else if (draggedItem) {
+      container.insertBefore(draggedItem, afterElement);
+    }
   });
 }
 
@@ -2199,8 +2149,9 @@ function renderCalendarView() {
         const displayTitle = bookName ? `[${bookName}] ${title}` : title;
 
         html += `
-          <div class="calendar-item" draggable="true" data-id="${item.id}" data-date="${dateStr}">
-            <div style="font-size: 12px; color: #333;">${displayTitle}</div>
+          <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="display: flex; gap: 8px; align-items: center;">
+            <div class="drag-handle" style="cursor: move; color: #999; font-size: 14px; user-select: none; -webkit-user-select: none;">≡</div>
+            <div style="font-size: 12px; color: #333; flex: 1;">${displayTitle}</div>
           </div>
         `;
       });
@@ -2228,49 +2179,32 @@ function initCalendarDragDrop() {
   let touchStartY = 0;
   let touchCurrentY = 0;
 
-  // 데스크톱 드래그
   items.forEach(item => {
-    item.addEventListener('dragstart', (e) => {
+    const handle = item.querySelector('.drag-handle');
+    if (!handle) return;
+
+    handle.setAttribute('draggable', 'true');
+
+    // 데스크톱 드래그
+    handle.addEventListener('dragstart', (e) => {
       draggedItem = item;
       item.style.opacity = '0.5';
     });
 
-    item.addEventListener('dragend', (e) => {
+    handle.addEventListener('dragend', (e) => {
       item.style.opacity = '1';
     });
 
     // 모바일 터치 드래그
-    let touchTimer = null;
-    let isDraggingEnabled = false;
-
-    item.addEventListener('touchstart', (e) => {
+    handle.addEventListener('touchstart', (e) => {
+      draggedItem = item;
       touchStartY = e.touches[0].clientY;
-      isDraggingEnabled = false;
-
-      // 1500ms 후에 드래그 활성화
-      touchTimer = setTimeout(() => {
-        isDraggingEnabled = true;
-        draggedItem = item;
-        item.style.opacity = '0.5';
-        item.style.position = 'relative';
-        item.style.zIndex = '1000';
-
-        // 진동 피드백
-        if (navigator.vibrate) {
-          navigator.vibrate(50);
-        }
-      }, 1500);
+      item.style.opacity = '0.5';
+      item.style.position = 'relative';
+      item.style.zIndex = '1000';
     }, { passive: true });
 
-    item.addEventListener('touchmove', (e) => {
-      if (!isDraggingEnabled) {
-        if (touchTimer) {
-          clearTimeout(touchTimer);
-          touchTimer = null;
-        }
-        return;
-      }
-
+    handle.addEventListener('touchmove', (e) => {
       e.preventDefault();
       touchCurrentY = e.touches[0].clientY;
 
@@ -2291,16 +2225,7 @@ function initCalendarDragDrop() {
       }
     }, { passive: false });
 
-    item.addEventListener('touchend', (e) => {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-
-      if (!isDraggingEnabled) {
-        return;
-      }
-
+    handle.addEventListener('touchend', (e) => {
       item.style.opacity = '1';
       item.style.position = '';
       item.style.zIndex = '';
@@ -2327,25 +2252,6 @@ function initCalendarDragDrop() {
       groups.forEach(g => g.style.background = 'transparent');
 
       draggedItem = null;
-      isDraggingEnabled = false;
-    });
-
-    item.addEventListener('touchcancel', (e) => {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-
-      if (isDraggingEnabled) {
-        item.style.opacity = '1';
-        item.style.position = '';
-        item.style.zIndex = '';
-      }
-
-      groups.forEach(g => g.style.background = 'transparent');
-
-      draggedItem = null;
-      isDraggingEnabled = false;
     });
   });
 
