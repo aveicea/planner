@@ -1060,13 +1060,16 @@ window.updateRating = async function(taskId, value) {
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 
-  // 메인 데이터와 D-Day 데이터를 동시에 로딩
-  const [mainData, ddayData] = await Promise.all([
-    fetchData(),
-    fetchDDayData().then(() => autoSelectClosestDDay()).catch(err => {
-      console.error('D-Day loading failed:', err);
-    })
-  ]);
+  // 메인 데이터만 먼저 로드해서 빠르게 표시
+  await fetchData();
+
+  // D-Day 데이터는 백그라운드에서 로드
+  fetchDDayData().then(() => {
+    autoSelectClosestDDay();
+    renderData(); // D-Day 로드 후 화면 업데이트
+  }).catch(err => {
+    console.error('D-Day loading failed:', err);
+  });
 
   setInterval(fetchData, 300000);
 
