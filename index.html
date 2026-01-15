@@ -125,6 +125,10 @@
       border: 1px solid #e5e5e7;
       border-radius: 10px;
       transition: all 0.2s;
+      -webkit-user-drag: element;
+      -webkit-touch-callout: none;
+      touch-action: none;
+      cursor: move;
     }
 
     .task-item.completed {
@@ -211,6 +215,9 @@
       margin-bottom: 6px;
       cursor: move;
       transition: all 0.2s;
+      -webkit-user-drag: element;
+      -webkit-touch-callout: none;
+      touch-action: none;
     }
 
     .calendar-item:hover {

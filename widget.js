@@ -334,7 +334,7 @@ function renderPlannerCalendarHTML() {
       ">
         <div style="font-size: 12px; font-weight: 600; color: ${isToday ? '#333' : dayColor}; margin-bottom: 4px;">${date}</div>
         <div style="font-size: 9px; color: #86868b; line-height: 1.4; text-align: right;">
-          <div>${formatMinutesToClock(totalActual)}</div>
+          <div style="font-weight: 700; color: #333;">${formatMinutesToClock(totalActual)}</div>
           <div>${formatMinutesToClock(totalTarget)}</div>
         </div>
       </div>
@@ -1581,7 +1581,7 @@ function initSortable() {
           navigator.vibrate(50);
         }
       }, 1500);
-    });
+    }, { passive: true });
 
     item.addEventListener('touchmove', (e) => {
       if (!isDraggingEnabled) {
@@ -1602,7 +1602,7 @@ function initSortable() {
       } else {
         container.insertBefore(draggedItem, afterElement);
       }
-    });
+    }, { passive: false });
 
     item.addEventListener('touchend', async (e) => {
       if (touchTimer) {
@@ -2254,7 +2254,7 @@ function initCalendarDragDrop() {
           navigator.vibrate(50);
         }
       }, 1500);
-    });
+    }, { passive: true });
 
     item.addEventListener('touchmove', (e) => {
       if (!isDraggingEnabled) {
@@ -2283,7 +2283,7 @@ function initCalendarDragDrop() {
       if (targetGroup) {
         targetGroup.style.background = '#f0f0f0';
       }
-    });
+    }, { passive: false });
 
     item.addEventListener('touchend', (e) => {
       if (touchTimer) {
