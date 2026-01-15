@@ -1173,9 +1173,17 @@ async function fetchData(retryCount = 0) {
     }
 
     currentData = await response.json();
-    await fetchBookNames();
+
+    // 일단 먼저 렌더링 (책 이름 없이)
     renderData();
     updateLastUpdateTime();
+
+    // 책 이름은 백그라운드에서 로드
+    fetchBookNames().then(() => {
+      renderData(); // 책 이름 로드 후 다시 렌더링
+    }).catch(err => {
+      console.error('책 이름 로드 실패:', err);
+    });
   } catch (error) {
     console.error('Error:', error);
 
@@ -1227,8 +1235,10 @@ async function fetchBookNames() {
     });
   }
 
-  for (const bookId of bookIds) {
-    if (!bookNames[bookId]) {
+  // 모든 책 데이터를 병렬로 가져오기
+  const fetchPromises = Array.from(bookIds)
+    .filter(bookId => !bookNames[bookId])
+    .map(async (bookId) => {
       try {
         const notionUrl = `https://api.notion.com/v1/pages/${bookId}`;
         const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
@@ -1255,8 +1265,9 @@ async function fetchBookNames() {
         console.warn(`Error fetching book ${bookId}:`, error);
         bookNames[bookId] = '책';
       }
-    }
-  }
+    });
+
+  await Promise.all(fetchPromises);
 }
 
 function getTaskTitle(task) {
