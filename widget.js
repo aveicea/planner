@@ -466,7 +466,9 @@ window.toggleCalendarView = async function(targetDate = null) {
 
     // targetDate가 있으면 해당 날짜로 이동
     if (targetDate) {
-      currentDate = new Date(targetDate);
+      // YYYY-MM-DD 형식을 로컬 날짜로 변환
+      const [year, month, day] = targetDate.split('-').map(Number);
+      currentDate = new Date(year, month - 1, day);
     }
     renderData();
   }
@@ -1299,6 +1301,10 @@ async function fetchData(retryCount = 0) {
     const futureDate = new Date(today);
     futureDate.setDate(today.getDate() + 30); // 30일 후
 
+    // 로컬 날짜를 YYYY-MM-DD 형식으로 변환
+    const pastDateStr = `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, '0')}-${String(pastDate.getDate()).padStart(2, '0')}`;
+    const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
+
     const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
@@ -1314,13 +1320,13 @@ async function fetchData(retryCount = 0) {
             {
               property: '날짜',
               date: {
-                on_or_after: pastDate.toISOString().split('T')[0]
+                on_or_after: pastDateStr
               }
             },
             {
               property: '날짜',
               date: {
-                on_or_before: futureDate.toISOString().split('T')[0]
+                on_or_before: futureDateStr
               }
             }
           ]
@@ -2086,7 +2092,9 @@ async function fetchDDayData() {
   loading.textContent = '⏳';
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // 로컬 날짜를 YYYY-MM-DD 형식으로 변환
+    const todayDate = new Date();
+    const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
 
     const notionUrl = `https://api.notion.com/v1/databases/${DDAY_DB_ID}/query`;
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
@@ -2567,12 +2575,15 @@ function renderCalendarView() {
   const allDates = [];
   const currentLoopDate = new Date(calendarStartDate);
   while (currentLoopDate < calendarEndDate) {
-    const dateStr = currentLoopDate.toISOString().split('T')[0];
+    // 로컬 날짜를 YYYY-MM-DD 형식으로 변환
+    const dateStr = `${currentLoopDate.getFullYear()}-${String(currentLoopDate.getMonth() + 1).padStart(2, '0')}-${String(currentLoopDate.getDate()).padStart(2, '0')}`;
     allDates.push(dateStr);
     currentLoopDate.setDate(currentLoopDate.getDate() + 1);
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  // 로컬 날짜를 YYYY-MM-DD 형식으로 변환
+  const todayDate = new Date();
+  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
 
   let html = `
     <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; gap: 4px;">
