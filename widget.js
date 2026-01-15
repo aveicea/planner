@@ -1897,9 +1897,25 @@ window.saveToPlanner = async function(dateStr) {
       return itemDate === dateStr;
     });
 
+    let addedCount = 0;
+    let skippedCount = 0;
+
     for (const item of itemsOnDate) {
       const title = getCalendarItemTitle(item);
       const bookRelation = item.properties?.['책']?.relation?.[0];
+
+      // 플래너에 이미 같은 제목과 날짜의 항목이 있는지 확인
+      const isDuplicate = currentData.results.some(plannerItem => {
+        const plannerTitle = plannerItem.properties?.['범위']?.title?.[0]?.plain_text || '';
+        const plannerDate = plannerItem.properties?.['날짜']?.date?.start || '';
+        return plannerTitle === title && plannerDate === dateStr;
+      });
+
+      if (isDuplicate) {
+        console.log('중복 항목 건너뛰기:', title, dateStr);
+        skippedCount++;
+        continue;
+      }
 
       const properties = {
         '범위': {
@@ -1932,7 +1948,10 @@ window.saveToPlanner = async function(dateStr) {
       if (!response.ok) {
         throw new Error('플래너에 저장 실패');
       }
+      addedCount++;
     }
+
+    console.log(`저장 완료: ${addedCount}개 추가, ${skippedCount}개 건너뜀`);
 
     // alert 없이 바로 새로고침
     await fetchData();
