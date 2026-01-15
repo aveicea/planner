@@ -609,7 +609,7 @@ window.duplicateTask = async function(taskId) {
 
     if (!response.ok) throw new Error('복제 실패');
     
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('복제 실패:', error);
     loading.textContent = '';
@@ -677,7 +677,7 @@ window.confirmEditTask = async function(taskId) {
       }
 
       await updateNotionPage(taskId, properties);
-      setTimeout(() => fetchData(), 500);
+      setTimeout(() => fetchAllData(), 500);
     } catch (error) {
       console.error('수정 실패:', error);
       loading.textContent = '';
@@ -710,7 +710,7 @@ window.deleteTask = async function(taskId) {
 
       if (!response.ok) throw new Error('삭제 실패');
 
-      setTimeout(() => fetchData(), 500);
+      setTimeout(() => fetchAllData(), 500);
     } catch (error) {
       console.error('삭제 실패:', error);
       loading.textContent = '';
@@ -837,7 +837,7 @@ window.confirmAddTask = async function() {
       throw new Error(result.message || '추가 실패');
     }
     
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('할일 추가 오류:', error);
   } finally {
@@ -867,7 +867,7 @@ window.toggleComplete = async function(taskId, completed) {
     await updateNotionPage(taskId, {
       '완료': { checkbox: completed }
     });
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('업데이트 실패:', error);
     // 실패시 롤백
@@ -912,8 +912,6 @@ window.updateTime = async function(taskId, field, value, inputElement) {
     inputElement.value = formattedValue;
   }
 
-  if (!formattedValue.trim()) return;
-
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
 
@@ -922,12 +920,23 @@ window.updateTime = async function(taskId, field, value, inputElement) {
   if (!task) return;
   const originalValue = task.properties[field]?.rich_text?.[0]?.plain_text || '';
 
-  // UI 즉시 업데이트
+  // UI 즉시 업데이트 (빈 값이든 아니든)
   if (!task.properties[field]) {
     task.properties[field] = { rich_text: [] };
   }
-  task.properties[field].rich_text = [{ type: 'text', text: { content: formattedValue }, plain_text: formattedValue }];
+
+  if (formattedValue.trim()) {
+    task.properties[field].rich_text = [{ type: 'text', text: { content: formattedValue }, plain_text: formattedValue }];
+  } else {
+    task.properties[field].rich_text = [];
+  }
   renderData();
+
+  // 빈 값이면 API 호출만 안 함
+  if (!formattedValue.trim()) {
+    loading.textContent = '';
+    return;
+  }
 
   // 백그라운드에서 API 호출
   try {
@@ -936,7 +945,7 @@ window.updateTime = async function(taskId, field, value, inputElement) {
         rich_text: [{ type: 'text', text: { content: formattedValue } }]
       }
     });
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('시간 업데이트 실패:', error);
     // 실패시 롤백
@@ -1049,7 +1058,7 @@ window.updateDate = async function(taskId, newDate) {
 
     if (!response.ok) throw new Error('복제 실패');
 
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('날짜 변경 실패:', error);
     // 실패시 임시 항목 제거
@@ -1084,7 +1093,7 @@ window.updateTargetTimeInTask = async function(taskId, newTime) {
       '목표 시간': { number: timeValue }
     });
 
-    await fetchData();
+    await fetchAllData();
   } catch (error) {
     console.error('목표 시간 업데이트 실패:', error);
     // 실패시 롤백
@@ -1192,7 +1201,7 @@ window.updateDateInTask = async function(taskId, newDate) {
 
     if (!response.ok) throw new Error('복제 실패');
 
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('날짜 변경 실패:', error);
     // 실패시 임시 항목 제거
@@ -1220,7 +1229,7 @@ window.updateRating = async function(taskId, value) {
     await updateNotionPage(taskId, {
       '(੭•̀ᴗ•̀)੭': value ? { select: { name: value } } : { select: null }
     });
-    setTimeout(() => fetchData(), 500);
+    setTimeout(() => fetchAllData(), 500);
   } catch (error) {
     console.error('집중도 업데이트 실패:', error);
     // 실패시 롤백
@@ -1838,7 +1847,7 @@ function initSortable() {
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        setTimeout(() => fetchData(), 500);
+        setTimeout(() => fetchAllData(), 500);
       }
     });
 
@@ -1879,7 +1888,7 @@ function initSortable() {
 
         if (dragStartIndex !== dragEndIndex) {
           await updateTaskOrder();
-          setTimeout(() => fetchData(), 500);
+          setTimeout(() => fetchAllData(), 500);
         }
 
         draggedItem = null;
@@ -1917,7 +1926,7 @@ function initSortable() {
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        setTimeout(() => fetchData(), 500);
+        setTimeout(() => fetchAllData(), 500);
       }
 
       draggedItem = null;
@@ -1972,7 +1981,7 @@ async function updateTaskOrder() {
   
   await Promise.all(updates);
   
-  setTimeout(() => fetchData(), 1000);
+  setTimeout(() => fetchAllData(), 1000);
 }
 
 async function updateNotionPage(pageId, properties) {
@@ -2236,7 +2245,7 @@ window.saveToPlanner = async function(dateStr) {
     console.log(`저장 완료: ${addedCount}개 추가, ${skippedCount}개 건너뜀`);
 
     // alert 없이 바로 새로고침
-    await fetchData();
+    await fetchAllData();
   } catch (error) {
     console.error('Save error:', error);
   } finally {
@@ -2311,7 +2320,7 @@ window.saveAllToPlanner = async function() {
     console.log(`전체 저장 완료: ${totalAdded}개 추가, ${totalSkipped}개 건너뜀`);
 
     // alert 없이 바로 새로고침
-    await fetchData();
+    await fetchAllData();
   } catch (error) {
     console.error('Save all error:', error);
   } finally {
