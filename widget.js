@@ -1585,12 +1585,20 @@ function renderTimelineView() {
           totalActual += actualProp.formula.number || 0;
         } else if (actualProp.formula?.type === 'string') {
           const str = actualProp.formula.string || '';
+        
+          // 1️⃣ 부호 먼저 확인
+          const sign = str.trim().startsWith('-') ? -1 : 1;
+        
+          // 2️⃣ 시간 / 분 파싱
           const hourMatch = str.match(/(\d+)시간/);
           const minMatch = str.match(/(\d+)분/);
-          const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
-          const mins = minMatch ? parseInt(minMatch[1]) : 0;
-          totalActual += hours * 60 + mins;
+          const hours = hourMatch ? parseInt(hourMatch[1], 10) : 0;
+          const mins = minMatch ? parseInt(minMatch[1], 10) : 0;
+        
+          // 3️⃣ 부호 적용
+          totalActual += sign * (hours * 60 + mins);
         }
+
       }
     }
   });
@@ -1748,11 +1756,18 @@ function renderTaskView() {
           totalActual += actualProp.formula.number || 0;
         } else if (actualProp.formula?.type === 'string') {
           const str = actualProp.formula.string || '';
+        
+          // 1️⃣ 부호 먼저 확인
+          const sign = str.trim().startsWith('-') ? -1 : 1;
+        
+          // 2️⃣ 시간 / 분 파싱
           const hourMatch = str.match(/(\d+)시간/);
           const minMatch = str.match(/(\d+)분/);
-          const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
-          const mins = minMatch ? parseInt(minMatch[1]) : 0;
-          totalActual += hours * 60 + mins;
+          const hours = hourMatch ? parseInt(hourMatch[1], 10) : 0;
+          const mins = minMatch ? parseInt(minMatch[1], 10) : 0;
+        
+          // 3️⃣ 부호 적용
+          totalActual += sign * (hours * 60 + mins);
         }
       }
     }
