@@ -1588,6 +1588,50 @@ function initSortable() {
       }
     });
 
+    // 마우스 드래그 (아이패드 마우스 포함)
+    let isMouseDragging = false;
+
+    handle.addEventListener('mousedown', (e) => {
+      isMouseDragging = true;
+      draggedItem = item;
+      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
+      item.style.opacity = '0.5';
+      item.style.position = 'relative';
+      item.style.zIndex = '1000';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isMouseDragging || !draggedItem) return;
+      const afterElement = getDragAfterElement(container, e.clientY);
+
+      if (afterElement == null) {
+        container.appendChild(draggedItem);
+      } else {
+        container.insertBefore(draggedItem, afterElement);
+      }
+    });
+
+    document.addEventListener('mouseup', async (e) => {
+      if (!isMouseDragging) return;
+      isMouseDragging = false;
+
+      if (draggedItem) {
+        item.style.opacity = '1';
+        item.style.position = '';
+        item.style.zIndex = '';
+
+        const dragEndIndex = Array.from(container.children).indexOf(draggedItem);
+
+        if (dragStartIndex !== dragEndIndex) {
+          await updateTaskOrder();
+          setTimeout(() => fetchData(), 500);
+        }
+
+        draggedItem = null;
+      }
+    });
+
     // 터치 드래그 (모바일)
     handle.addEventListener('touchstart', (e) => {
       draggedItem = item;
@@ -2222,6 +2266,64 @@ function initCalendarDragDrop() {
 
     handle.addEventListener('dragend', (e) => {
       item.style.opacity = '1';
+    });
+
+    // 마우스 드래그 (아이패드 마우스 포함)
+    let isMouseDragging = false;
+
+    handle.addEventListener('mousedown', (e) => {
+      isMouseDragging = true;
+      draggedItem = item;
+      item.style.opacity = '0.5';
+      item.style.position = 'relative';
+      item.style.zIndex = '1000';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isMouseDragging || !draggedItem) return;
+
+      // 마우스 위치에 있는 그룹 찾기
+      const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
+      const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+      // 모든 그룹 하이라이트 제거
+      groups.forEach(g => g.style.background = 'transparent');
+
+      // 현재 그룹 하이라이트
+      if (targetGroup) {
+        targetGroup.style.background = '#f0f0f0';
+      }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!isMouseDragging) return;
+      isMouseDragging = false;
+
+      if (draggedItem) {
+        item.style.opacity = '1';
+        item.style.position = '';
+        item.style.zIndex = '';
+
+        // 마우스 종료 위치의 그룹 찾기
+        const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
+        const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+        if (targetGroup && draggedItem) {
+          const newDate = targetGroup.getAttribute('data-date');
+          const itemId = draggedItem.getAttribute('data-id');
+
+          draggedItem.setAttribute('data-date', newDate);
+          targetGroup.appendChild(draggedItem);
+
+          updateCalendarItemDate(itemId, newDate);
+        }
+
+        // 모든 그룹 하이라이트 제거
+        groups.forEach(g => g.style.background = 'transparent');
+
+        draggedItem = null;
+      }
     });
 
     // 모바일 터치 드래그
