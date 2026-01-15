@@ -2395,8 +2395,8 @@ function renderCalendarView() {
 
   let html = `
     <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; gap: 4px;">
-      <button onclick="saveAllToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜 → 플래너">💾</button>
       <button onclick="syncPlannerToCalendar()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
+      <button onclick="saveAllToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜 → 플래너">💾</button>
     </div>
     <button onclick="loadPrevCalendar()" style="width: 100%; background: #e5e5e7; color: #333; border: none; border-radius: 4px; padding: 8px; font-size: 11px; cursor: pointer; margin-bottom: 12px;">더보기</button>
   `;
