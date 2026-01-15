@@ -2222,9 +2222,9 @@ function renderCalendarView() {
         const displayTitle = bookName ? `[${bookName}] ${title}` : title;
 
         html += `
-          <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="display: flex; align-items: center;">
-            <div class="drag-handle" style="width: 120px; cursor: move; background: rgba(200,200,200,0.3); user-select: none; -webkit-user-select: none; touch-action: none; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; color: #999;">⋮⋮</div>
-            <div style="font-size: 12px; color: #333; flex: 1; margin-left: -110px;">${displayTitle}</div>
+          <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="position: relative; padding: 8px 12px;">
+            <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 80px; cursor: move; background: rgba(200,200,200,0.3); user-select: none; -webkit-user-select: none; touch-action: none; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; color: #999;">⋮⋮</div>
+            <div style="font-size: 12px; color: #333;">${displayTitle}</div>
           </div>
         `;
       });
