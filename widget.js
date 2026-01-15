@@ -1518,7 +1518,7 @@ function renderTaskView() {
 
     html += `
       <div class="task-item ${completed ? 'completed' : ''}" data-id="${task.id}" style="border-left: 3px solid #999; position: relative; padding: 12px;">
-        <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 80px; cursor: move; background: rgba(200,200,200,0.3); user-select: none; -webkit-user-select: none; touch-action: none; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; color: #999;">⋮⋮</div>
+        <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 40px; cursor: move; opacity: 0; user-select: none; -webkit-user-select: none; touch-action: none;"></div>
         <div class="task-header" style="flex: 1;">
           <div class="task-content" style="flex: 1;">
             <div class="task-title ${completed ? 'completed' : ''}" style="cursor: pointer;" onclick="editTask('${task.id}')">${title}</div>
@@ -2223,7 +2223,7 @@ function renderCalendarView() {
 
         html += `
           <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="position: relative; padding: 8px 12px;">
-            <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 80px; cursor: move; background: rgba(200,200,200,0.3); user-select: none; -webkit-user-select: none; touch-action: none; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; color: #999;">⋮⋮</div>
+            <div class="drag-handle" style="position: absolute; left: 0; top: 0; bottom: 0; width: 80px; cursor: move; opacity: 0; user-select: none; -webkit-user-select: none; touch-action: none;"></div>
             <div style="font-size: 12px; color: #333;">${displayTitle}</div>
           </div>
         `;
