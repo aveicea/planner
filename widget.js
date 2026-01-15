@@ -51,20 +51,11 @@ window.toggleDDaySelector = async function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 미래 날짜만 필터링 (체크박스 무시)
-  const ddayItems = ddayData.results.filter(item => {
-    const dateStr = item.properties?.['date']?.date?.start;
-    if (!dateStr) return false;
-
-    const itemDate = new Date(dateStr);
-    itemDate.setHours(0, 0, 0, 0);
-
-    // 오늘이거나 미래 날짜만
-    return itemDate >= today;
-  });
+  // API에서 이미 필터링된 데이터
+  const ddayItems = ddayData.results;
 
   if (ddayItems.length === 0) {
-    content.innerHTML = '<div class="empty-message">미래 D-Day 항목이 없습니다.</div>';
+    content.innerHTML = '<div class="empty-message">디데이 표시된 미래 항목이 없습니다.</div>';
     return;
   }
 
@@ -148,33 +139,16 @@ function autoSelectClosestDDay() {
   today.setHours(0, 0, 0, 0);
 
   console.log('=== D-Day 디버그 ===');
-  console.log('전체 항목 수:', ddayData.results.length);
+  console.log('필터링된 항목 수:', ddayData.results.length);
 
-  // 미래 날짜만 필터링 (체크박스 무시)
-  const futureDDays = ddayData.results.filter(item => {
-    const dateStr = item.properties?.['date']?.date?.start;
+  // API에서 이미 필터링되고 정렬된 데이터
+  if (ddayData.results.length === 0) {
+    console.log('디데이 표시된 미래 항목이 없습니다.');
+    return;
+  }
 
-    if (!dateStr) return false;
-
-    const itemDate = new Date(dateStr);
-    itemDate.setHours(0, 0, 0, 0);
-
-    return itemDate >= today;
-  });
-
-  console.log('미래 D-Day 항목 수:', futureDDays.length);
-
-  if (futureDDays.length === 0) return;
-
-  // 날짜순 정렬 (가장 가까운 날짜 찾기)
-  futureDDays.sort((a, b) => {
-    const dateA = new Date(a.properties?.['date']?.date?.start);
-    const dateB = new Date(b.properties?.['date']?.date?.start);
-    return dateA - dateB;
-  });
-
-  // 가장 가까운 D-Day 선택
-  const closestDDay = futureDDays[0];
+  // 가장 가까운 D-Day 선택 (이미 날짜순 정렬됨)
+  const closestDDay = ddayData.results[0];
   const title = closestDDay.properties?.['이름']?.title?.[0]?.plain_text || '제목 없음';
   const date = closestDDay.properties?.['date']?.date?.start || '';
 
@@ -1813,6 +1787,8 @@ async function fetchDDayData() {
   loading.textContent = '⏳';
 
   try {
+    const today = new Date().toISOString().split('T')[0];
+
     const notionUrl = `https://api.notion.com/v1/databases/${DDAY_DB_ID}/query`;
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
@@ -1822,7 +1798,29 @@ async function fetchDDayData() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        page_size: 100
+        page_size: 100,
+        filter: {
+          and: [
+            {
+              property: 'date',
+              date: {
+                on_or_after: today
+              }
+            },
+            {
+              property: '디데이 표시',
+              checkbox: {
+                equals: true
+              }
+            }
+          ]
+        },
+        sorts: [
+          {
+            property: 'date',
+            direction: 'ascending'
+          }
+        ]
       })
     });
 
