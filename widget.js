@@ -1691,7 +1691,12 @@ function renderTimelineView() {
           
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="font-size: 11px; color: #86868b;">
-              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? ` (${actualTime - targetTime > 0 ? '+' : ''}${formatMinutesToTime(Math.abs(actualTime - targetTime))})` : ''}
+              목표 ${formatMinutesToTime(targetTime)} / 실제 ${formatMinutesToTime(actualTime)}${end ? (() => {
+                const diff = actualTime - targetTime;
+                if (diff === 0) return '';
+                const sign = diff > 0 ? '+' : '-';
+                return ` (${sign}${formatMinutesToTime(Math.abs(diff))})`;
+              })() : ''}
             </div>
             ${!completed ? `
               <div style="display: flex; gap: 16px; align-items: center;">
