@@ -1528,7 +1528,7 @@ function renderTaskView() {
                 <span style="font-size: 11px;">⏱</span>
                 <input type="number" value="${targetTime || 0}"
                   onblur="updateTargetTimeInTask('${task.id}', this.value)"
-                  style="width: 45px; padding: 4px; border: 1px solid #e5e5e7; border-radius: 4px; text-align: center; font-size: 11px;">
+                  style="width: 55px; padding: 6px; border: 1px solid #e5e5e7; border-radius: 4px; text-align: center; font-size: 11px; background: white;">
                 <span style="font-size: 11px;">분</span>
               </span>
               ${dateStart ? `<span style="font-size: 10px;">${formatDateShort(dateStart)}</span>` : ''}
