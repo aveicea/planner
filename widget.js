@@ -1233,7 +1233,7 @@ window.updateRating = async function(taskId, value) {
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 
-  // 메인 데이터만 먼저 로드해서 빠르게 표시
+  // 메인 플래너 데이터만 먼저 로드해서 빠르게 표시
   await fetchData();
 
   // D-Day 데이터는 백그라운드에서 로드
@@ -1242,6 +1242,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderData(); // D-Day 로드 후 화면 업데이트
   }).catch(err => {
     console.error('D-Day loading failed:', err);
+  });
+
+  // 캘린더 데이터도 백그라운드에서 로드 (조용히)
+  fetchCalendarData(true).catch(err => {
+    console.error('Calendar loading failed:', err);
   });
 
   setInterval(fetchData, 300000);
@@ -1273,6 +1278,13 @@ async function fetchData(retryCount = 0) {
   loading.textContent = '⏳';
 
   try {
+    // 오늘 기준 앞뒤 날짜 계산
+    const today = new Date();
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 7); // 7일 전
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + 30); // 30일 후
+
     const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
@@ -1283,6 +1295,22 @@ async function fetchData(retryCount = 0) {
       },
       body: JSON.stringify({
         page_size: 100,
+        filter: {
+          and: [
+            {
+              property: '날짜',
+              date: {
+                on_or_after: pastDate.toISOString().split('T')[0]
+              }
+            },
+            {
+              property: '날짜',
+              date: {
+                on_or_before: futureDate.toISOString().split('T')[0]
+              }
+            }
+          ]
+        },
         sorts: [{ property: "날짜", direction: "descending" }]
       })
     });
@@ -1970,9 +1998,11 @@ function updateLastUpdateTime() {
     now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function fetchCalendarData() {
+async function fetchCalendarData(silent = false) {
   const loading = document.getElementById('loading');
-  loading.textContent = '⏳';
+  if (!silent) {
+    loading.textContent = '⏳';
+  }
 
   try {
     const notionUrl = `https://api.notion.com/v1/databases/${CALENDAR_DB_ID}/query`;
@@ -1998,7 +2028,9 @@ async function fetchCalendarData() {
   } catch (error) {
     console.error('Calendar fetch error:', error);
   } finally {
-    loading.textContent = '';
+    if (!silent) {
+      loading.textContent = '';
+    }
   }
 }
 
