@@ -1560,16 +1560,39 @@ function initSortable() {
   container.querySelectorAll('.task-item').forEach(item => {
     item.setAttribute('draggable', 'true');
 
+    let touchTimer = null;
+    let isDraggingEnabled = false;
+
     item.addEventListener('touchstart', (e) => {
-      draggedItem = item;
-      dragStartIndex = Array.from(container.children).indexOf(draggedItem);
       touchStartY = e.touches[0].clientY;
-      item.style.opacity = '0.5';
-      item.style.position = 'relative';
-      item.style.zIndex = '1000';
+      isDraggingEnabled = false;
+
+      // 1500ms 후에 드래그 활성화
+      touchTimer = setTimeout(() => {
+        isDraggingEnabled = true;
+        draggedItem = item;
+        dragStartIndex = Array.from(container.children).indexOf(draggedItem);
+        item.style.opacity = '0.5';
+        item.style.position = 'relative';
+        item.style.zIndex = '1000';
+
+        // 진동 피드백 (지원하는 경우)
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      }, 1500);
     });
 
     item.addEventListener('touchmove', (e) => {
+      if (!isDraggingEnabled) {
+        // 드래그 활성화 전에 움직이면 타이머 취소
+        if (touchTimer) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+        return;
+      }
+
       e.preventDefault();
       touchCurrentY = e.touches[0].clientY;
       const afterElement = getDragAfterElement(container, touchCurrentY);
@@ -1582,6 +1605,15 @@ function initSortable() {
     });
 
     item.addEventListener('touchend', async (e) => {
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      }
+
+      if (!isDraggingEnabled) {
+        return;
+      }
+
       item.style.opacity = '1';
       item.style.position = '';
       item.style.zIndex = '';
@@ -1595,6 +1627,23 @@ function initSortable() {
       }
 
       draggedItem = null;
+      isDraggingEnabled = false;
+    });
+
+    item.addEventListener('touchcancel', (e) => {
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      }
+
+      if (isDraggingEnabled) {
+        item.style.opacity = '1';
+        item.style.position = '';
+        item.style.zIndex = '';
+      }
+
+      draggedItem = null;
+      isDraggingEnabled = false;
     });
   });
 }
@@ -2170,7 +2219,10 @@ function initCalendarDragDrop() {
   const groups = document.querySelectorAll('.calendar-date-group');
 
   let draggedItem = null;
+  let touchStartY = 0;
+  let touchCurrentY = 0;
 
+  // 데스크톱 드래그
   items.forEach(item => {
     item.addEventListener('dragstart', (e) => {
       draggedItem = item;
@@ -2179,6 +2231,115 @@ function initCalendarDragDrop() {
 
     item.addEventListener('dragend', (e) => {
       item.style.opacity = '1';
+    });
+
+    // 모바일 터치 드래그
+    let touchTimer = null;
+    let isDraggingEnabled = false;
+
+    item.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      isDraggingEnabled = false;
+
+      // 1500ms 후에 드래그 활성화
+      touchTimer = setTimeout(() => {
+        isDraggingEnabled = true;
+        draggedItem = item;
+        item.style.opacity = '0.5';
+        item.style.position = 'relative';
+        item.style.zIndex = '1000';
+
+        // 진동 피드백
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      }, 1500);
+    });
+
+    item.addEventListener('touchmove', (e) => {
+      if (!isDraggingEnabled) {
+        if (touchTimer) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+        return;
+      }
+
+      e.preventDefault();
+      touchCurrentY = e.touches[0].clientY;
+
+      // 터치 위치에 있는 그룹 찾기
+      const touchedElement = document.elementFromPoint(
+        e.touches[0].clientX,
+        e.touches[0].clientY
+      );
+
+      const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+      // 모든 그룹 하이라이트 제거
+      groups.forEach(g => g.style.background = 'transparent');
+
+      // 현재 그룹 하이라이트
+      if (targetGroup) {
+        targetGroup.style.background = '#f0f0f0';
+      }
+    });
+
+    item.addEventListener('touchend', (e) => {
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      }
+
+      if (!isDraggingEnabled) {
+        return;
+      }
+
+      item.style.opacity = '1';
+      item.style.position = '';
+      item.style.zIndex = '';
+
+      // 터치 종료 위치의 그룹 찾기
+      const touchedElement = document.elementFromPoint(
+        e.changedTouches[0].clientX,
+        e.changedTouches[0].clientY
+      );
+
+      const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+      if (targetGroup && draggedItem) {
+        const newDate = targetGroup.getAttribute('data-date');
+        const itemId = draggedItem.getAttribute('data-id');
+
+        draggedItem.setAttribute('data-date', newDate);
+        targetGroup.appendChild(draggedItem);
+
+        updateCalendarItemDate(itemId, newDate);
+      }
+
+      // 모든 그룹 하이라이트 제거
+      groups.forEach(g => g.style.background = 'transparent');
+
+      draggedItem = null;
+      isDraggingEnabled = false;
+    });
+
+    item.addEventListener('touchcancel', (e) => {
+      if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      }
+
+      if (isDraggingEnabled) {
+        item.style.opacity = '1';
+        item.style.position = '';
+        item.style.zIndex = '';
+      }
+
+      groups.forEach(g => g.style.background = 'transparent');
+
+      draggedItem = null;
+      isDraggingEnabled = false;
     });
   });
 
