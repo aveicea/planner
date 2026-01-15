@@ -495,10 +495,10 @@ window.editTask = async function(taskId) {
   
   content.innerHTML = `
     <div style="padding: 20px;">
-      <h3 style="margin-bottom: 12px;">할일 수정</h3>
+      <h3 style="margin-bottom: 12px;">할 일 수정</h3>
       
       <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">범위</label>
-      <input type="text" id="edit-task-title" value="${title}" placeholder="할일 제목" 
+      <input type="text" id="edit-task-title" value="${title}" placeholder="할 일 제목" 
         style="width: 100%; padding: 8px; border: 1px solid #e5e5e7; border-radius: 4px; font-size: 13px; margin-bottom: 12px;">
       
       <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">책</label>
