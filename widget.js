@@ -1581,7 +1581,7 @@ function initSortable() {
           navigator.vibrate(50);
         }
       }, 1500);
-    });
+    }, { passive: true });
 
     item.addEventListener('touchmove', (e) => {
       if (!isDraggingEnabled) {
@@ -1602,7 +1602,7 @@ function initSortable() {
       } else {
         container.insertBefore(draggedItem, afterElement);
       }
-    });
+    }, { passive: false });
 
     item.addEventListener('touchend', async (e) => {
       if (touchTimer) {
@@ -2254,7 +2254,7 @@ function initCalendarDragDrop() {
           navigator.vibrate(50);
         }
       }, 1500);
-    });
+    }, { passive: true });
 
     item.addEventListener('touchmove', (e) => {
       if (!isDraggingEnabled) {
@@ -2283,7 +2283,7 @@ function initCalendarDragDrop() {
       if (targetGroup) {
         targetGroup.style.background = '#f0f0f0';
       }
-    });
+    }, { passive: false });
 
     item.addEventListener('touchend', (e) => {
       if (touchTimer) {
