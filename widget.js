@@ -1294,16 +1294,12 @@ async function fetchData(retryCount = 0) {
 
     currentData = await response.json();
 
-    // 일단 먼저 렌더링 (책 이름 없이)
+    // 책 이름 불러오기
+    await fetchBookNames();
+
+    // 렌더링
     renderData();
     updateLastUpdateTime();
-
-    // 책 이름은 백그라운드에서 로드
-    fetchBookNames().then(() => {
-      renderData(); // 책 이름 로드 후 다시 렌더링
-    }).catch(err => {
-      console.error('책 이름 로드 실패:', err);
-    });
   } catch (error) {
     console.error('Error:', error);
 
