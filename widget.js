@@ -1233,8 +1233,13 @@ window.updateRating = async function(taskId, value) {
 document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 
-  // 메인 데이터만 먼저 로드해서 빠르게 표시
+  // 메인 플래너 데이터 일부만 먼저 로드해서 빠르게 표시 (오늘 ±7~30일)
   await fetchData();
+
+  // 전체 플래너 데이터 백그라운드에서 로드
+  fetchAllData().catch(err => {
+    console.error('전체 데이터 로드 실패:', err);
+  });
 
   // D-Day 데이터는 백그라운드에서 로드
   fetchDDayData().then(() => {
@@ -1244,7 +1249,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('D-Day loading failed:', err);
   });
 
-  setInterval(fetchData, 300000);
+  // 캘린더 데이터도 백그라운드에서 로드 (조용히)
+  fetchCalendarData(true).catch(err => {
+    console.error('Calendar loading failed:', err);
+  });
+
+  setInterval(fetchAllData, 300000);
 
   setInterval(() => {
     console.log('keepalive');
@@ -1273,6 +1283,13 @@ async function fetchData(retryCount = 0) {
   loading.textContent = '⏳';
 
   try {
+    // 오늘 기준 앞뒤 날짜 계산 (빠른 초기 로드용)
+    const today = new Date();
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 7); // 7일 전
+    const futureDate = new Date(today);
+    futureDate.setDate(today.getDate() + 30); // 30일 후
+
     const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
       method: 'POST',
@@ -1283,6 +1300,22 @@ async function fetchData(retryCount = 0) {
       },
       body: JSON.stringify({
         page_size: 100,
+        filter: {
+          and: [
+            {
+              property: '날짜',
+              date: {
+                on_or_after: pastDate.toISOString().split('T')[0]
+              }
+            },
+            {
+              property: '날짜',
+              date: {
+                on_or_before: futureDate.toISOString().split('T')[0]
+              }
+            }
+          ]
+        },
         sorts: [{ property: "날짜", direction: "descending" }]
       })
     });
@@ -1294,16 +1327,12 @@ async function fetchData(retryCount = 0) {
 
     currentData = await response.json();
 
-    // 일단 먼저 렌더링 (책 이름 없이)
+    // 책 이름 불러오기
+    await fetchBookNames();
+
+    // 렌더링
     renderData();
     updateLastUpdateTime();
-
-    // 책 이름은 백그라운드에서 로드
-    fetchBookNames().then(() => {
-      renderData(); // 책 이름 로드 후 다시 렌더링
-    }).catch(err => {
-      console.error('책 이름 로드 실패:', err);
-    });
   } catch (error) {
     console.error('Error:', error);
 
@@ -1335,6 +1364,39 @@ async function fetchData(retryCount = 0) {
       `<div class="empty-message" style="white-space: pre-line;">❌ 오류\n\n${errorMessage}</div>`;
   } finally {
     loading.textContent = '';
+  }
+}
+
+async function fetchAllData() {
+  try {
+    const notionUrl = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        page_size: 100,
+        sorts: [{ property: "날짜", direction: "descending" }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    currentData = await response.json();
+
+    // 책 이름 불러오기
+    await fetchBookNames();
+
+    // 재렌더링
+    renderData();
+    console.log('전체 데이터 로드 완료:', currentData.results.length, '개 항목');
+  } catch (error) {
+    console.error('전체 데이터 로드 실패:', error);
   }
 }
 
@@ -1974,9 +2036,11 @@ function updateLastUpdateTime() {
     now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function fetchCalendarData() {
+async function fetchCalendarData(silent = false) {
   const loading = document.getElementById('loading');
-  loading.textContent = '⏳';
+  if (!silent) {
+    loading.textContent = '⏳';
+  }
 
   try {
     const notionUrl = `https://api.notion.com/v1/databases/${CALENDAR_DB_ID}/query`;
@@ -2002,7 +2066,9 @@ async function fetchCalendarData() {
   } catch (error) {
     console.error('Calendar fetch error:', error);
   } finally {
-    loading.textContent = '';
+    if (!silent) {
+      loading.textContent = '';
+    }
   }
 }
 
