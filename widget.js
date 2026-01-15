@@ -334,8 +334,8 @@ function renderPlannerCalendarHTML() {
       ">
         <div style="font-size: 12px; font-weight: 600; color: ${isToday ? '#333' : dayColor}; margin-bottom: 4px;">${date}</div>
         <div style="font-size: 9px; color: #86868b; line-height: 1.4; text-align: right;">
-          <div style="font-weight: 700; color: #333;">${formatMinutesToClock(totalActual)}</div>
           <div>${formatMinutesToClock(totalTarget)}</div>
+          <div style="font-weight: 700; color: #333;">${formatMinutesToClock(totalActual)}</div>
         </div>
       </div>
     `;
