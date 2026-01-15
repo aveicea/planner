@@ -69,7 +69,10 @@ window.toggleDDaySelector = async function() {
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <h3 style="margin: 0; font-size: 14px; font-weight: 600;">D-Day 선택</h3>
-      <button onclick="renderData()" style="font-size: 12px; padding: 4px 8px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
+      <div style="display: flex; gap: 8px;">
+        <button onclick="addDDay()" style="font-size: 12px; padding: 4px 8px; background: #34C759; color: white; border: none; border-radius: 4px; cursor: pointer;">추가</button>
+        <button onclick="renderData()" style="font-size: 12px; padding: 4px 8px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
+      </div>
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
   `;
@@ -94,8 +97,8 @@ window.toggleDDaySelector = async function() {
 
     html += `
       <button onclick="selectDDay('${dateStr}', '${title.replace(/'/g, "\\'")}', '${item.id}')"
-        style="padding: 12px; background: ${isSelected ? '#007AFF' : '#f5f5f7'}; color: ${isSelected ? 'white' : '#333'};
-        border: 1px solid ${isSelected ? '#007AFF' : '#e5e5e7'}; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
+        style="padding: 12px; background: ${isSelected ? '#999' : '#f5f5f7'}; color: ${isSelected ? 'white' : '#333'};
+        border: 1px solid ${isSelected ? '#999' : '#e5e5e7'}; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: 500;">${title}</span>
         <span style="font-weight: 600; font-size: 14px; opacity: ${isSelected ? '1' : '0.7'};">${dDayText}</span>
       </button>
@@ -128,6 +131,96 @@ window.clearDDay = function() {
   ddaySelectorOpen = false;
   updateDDayButton();
   renderData();
+};
+
+window.addDDay = function() {
+  const content = document.getElementById('content');
+
+  content.innerHTML = `
+    <div style="padding: 20px;">
+      <h3 style="margin-bottom: 16px; font-size: 14px; font-weight: 600;">D-Day 추가</h3>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 11px; color: #86868b; margin-bottom: 4px;">이름</label>
+        <input type="text" id="new-dday-title" placeholder="이벤트 이름"
+          style="width: 100%; padding: 8px; border: 1px solid #e5e5e7; border-radius: 4px; font-size: 13px;">
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 11px; color: #86868b; margin-bottom: 4px;">날짜</label>
+        <input type="date" id="new-dday-date"
+          style="width: 100%; padding: 8px; border: 1px solid #e5e5e7; border-radius: 4px; font-size: 13px;">
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button onclick="confirmAddDDay()" style="flex: 1; padding: 8px; background: #34C759; color: white; border: none; border-radius: 4px; cursor: pointer;">추가</button>
+        <button onclick="cancelAddDDay()" style="flex: 1; padding: 8px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">취소</button>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    document.getElementById('new-dday-title').focus();
+  }, 100);
+};
+
+window.confirmAddDDay = async function() {
+  const titleInput = document.getElementById('new-dday-title');
+  const dateInput = document.getElementById('new-dday-date');
+
+  const title = titleInput.value.trim();
+  const date = dateInput.value;
+
+  if (!title || !date) {
+    return;
+  }
+
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    const properties = {
+      '이름': {
+        title: [{ text: { content: title } }]
+      },
+      'date': {
+        date: { start: date }
+      },
+      '디데이 표시': {
+        checkbox: true
+      }
+    };
+
+    const notionUrl = 'https://api.notion.com/v1/pages';
+    const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_API_KEY}`,
+        'Notion-Version': '2022-06-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        parent: { database_id: DDAY_DB_ID },
+        properties: properties
+      })
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.message || '추가 실패');
+    }
+
+    await fetchDDayData();
+    await toggleDDaySelector();
+  } catch (error) {
+    console.error('D-Day 추가 오류:', error);
+  } finally {
+    loading.textContent = '';
+  }
+};
+
+window.cancelAddDDay = function() {
+  toggleDDaySelector();
 };
 
 function autoSelectClosestDDay() {
@@ -1387,7 +1480,7 @@ function renderTimelineView() {
             ${!completed ? `
               <div style="display: flex; gap: 16px; align-items: center;">
                 ${start && end ? `
-                  <button onclick="duplicateTask('${task.id}')" style="font-size: 16px; padding: 0; background: none; color: inherit; border: none; cursor: pointer; flex-shrink: 0;">+</button>
+                  <button onclick="duplicateTask('${task.id}')" style="font-size: 18px; padding: 2px 4px; background: none; color: inherit; border: none; cursor: pointer; flex-shrink: 0; display: inline-block; min-width: 20px; height: 20px; line-height: 1;">+</button>
                 ` : ''}
                 <span style="cursor: pointer; font-size: 16px; position: relative; display: inline-block; width: 20px; height: 20px; flex-shrink: 0;">
                   →
