@@ -69,10 +69,7 @@ window.toggleDDaySelector = async function() {
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
       <h3 style="margin: 0; font-size: 14px; font-weight: 600;">D-Day 선택</h3>
-      <div style="display: flex; gap: 8px;">
-        <button onclick="addDDay()" style="font-size: 12px; padding: 4px 8px; background: #34C759; color: white; border: none; border-radius: 4px; cursor: pointer;">추가</button>
-        <button onclick="renderData()" style="font-size: 12px; padding: 4px 8px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
-      </div>
+      <button onclick="renderData()" style="font-size: 12px; padding: 4px 8px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer;">닫기</button>
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
   `;
@@ -107,7 +104,10 @@ window.toggleDDaySelector = async function() {
 
   html += `
     </div>
-    <button onclick="clearDDay()" style="width: 100%; margin-top: 16px; padding: 8px; background: #FF3B30; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">D-Day 제거</button>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
+      <button onclick="addDDay()" style="padding: 8px; background: #34C759; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">추가</button>
+      <button onclick="clearDDay()" style="padding: 8px; background: #FF3B30; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">D-Day 제거</button>
+    </div>
   `;
 
   content.innerHTML = html;
@@ -147,6 +147,12 @@ window.addDDay = function() {
       </div>
 
       <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 11px; color: #86868b; margin-bottom: 4px;">속성</label>
+        <input type="text" id="new-dday-property" placeholder="속성"
+          style="width: 100%; padding: 8px; border: 1px solid #e5e5e7; border-radius: 4px; font-size: 13px;">
+      </div>
+
+      <div style="margin-bottom: 12px;">
         <label style="display: block; font-size: 11px; color: #86868b; margin-bottom: 4px;">날짜</label>
         <input type="date" id="new-dday-date"
           style="width: 100%; padding: 8px; border: 1px solid #e5e5e7; border-radius: 4px; font-size: 13px;">
@@ -166,9 +172,11 @@ window.addDDay = function() {
 
 window.confirmAddDDay = async function() {
   const titleInput = document.getElementById('new-dday-title');
+  const propertyInput = document.getElementById('new-dday-property');
   const dateInput = document.getElementById('new-dday-date');
 
   const title = titleInput.value.trim();
+  const property = propertyInput.value.trim();
   const date = dateInput.value;
 
   if (!title || !date) {
@@ -190,6 +198,12 @@ window.confirmAddDDay = async function() {
         checkbox: true
       }
     };
+
+    if (property) {
+      properties['속성'] = {
+        rich_text: [{ text: { content: property } }]
+      };
+    }
 
     const notionUrl = 'https://api.notion.com/v1/pages';
     const response = await fetch(`${CORS_PROXY}${encodeURIComponent(notionUrl)}`, {
