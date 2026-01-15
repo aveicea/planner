@@ -51,10 +51,8 @@ window.toggleDDaySelector = async function() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
+  // 미래 날짜만 필터링 (체크박스 무시)
   const ddayItems = ddayData.results.filter(item => {
-    if (item.properties?.['디데이 표시']?.checkbox !== true) return false;
-
     const dateStr = item.properties?.['date']?.date?.start;
     if (!dateStr) return false;
 
@@ -66,7 +64,7 @@ window.toggleDDaySelector = async function() {
   });
 
   if (ddayItems.length === 0) {
-    content.innerHTML = '<div class="empty-message">디데이 표시된 미래 항목이 없습니다.</div>';
+    content.innerHTML = '<div class="empty-message">미래 D-Day 항목이 없습니다.</div>';
     return;
   }
 
@@ -152,35 +150,10 @@ function autoSelectClosestDDay() {
   console.log('=== D-Day 디버그 ===');
   console.log('전체 항목 수:', ddayData.results.length);
 
-  // 첫 번째 항목의 속성 출력
-  if (ddayData.results.length > 0) {
-    console.log('첫 번째 항목의 속성들:', Object.keys(ddayData.results[0].properties));
-    console.log('디데이 표시 속성 값:', ddayData.results[0].properties?.['디데이 표시']);
-
-    // 처음 5개 항목의 디데이 표시 값 확인
-    ddayData.results.slice(0, 5).forEach((item, i) => {
-      const title = item.properties?.['이름']?.title?.[0]?.plain_text || '제목없음';
-      const ddayCheck = item.properties?.['디데이 표시'];
-      console.log(`항목 ${i+1}: ${title}`, ddayCheck);
-    });
-  }
-
-  // 체크박스 체크된 항목 확인
-  const checkedItems = ddayData.results.filter(item => item.properties?.['디데이 표시']?.checkbox === true);
-  console.log('디데이 표시 체크된 항목 수:', checkedItems.length);
-
-  checkedItems.forEach((item, i) => {
-    const title = item.properties?.['이름']?.title?.[0]?.plain_text;
-    const dateStr = item.properties?.['date']?.date?.start;
-    console.log(`  ${i+1}. ${title} - ${dateStr}`);
-  });
-
-  // '디데이 표시' 체크된 항목 중 미래 날짜만 필터링
+  // 미래 날짜만 필터링 (체크박스 무시)
   const futureDDays = ddayData.results.filter(item => {
-    const hasCheckbox = item.properties?.['디데이 표시']?.checkbox === true;
     const dateStr = item.properties?.['date']?.date?.start;
 
-    if (!hasCheckbox) return false;
     if (!dateStr) return false;
 
     const itemDate = new Date(dateStr);
