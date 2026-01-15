@@ -2226,12 +2226,13 @@ function initCalendarDragDrop() {
 
     // 모바일 터치 드래그
     handle.addEventListener('touchstart', (e) => {
+      e.preventDefault();
       draggedItem = item;
       touchStartY = e.touches[0].clientY;
       item.style.opacity = '0.5';
       item.style.position = 'relative';
       item.style.zIndex = '1000';
-    }, { passive: true });
+    }, { passive: false });
 
     handle.addEventListener('touchmove', (e) => {
       e.preventDefault();
