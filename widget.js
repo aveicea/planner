@@ -2136,6 +2136,15 @@ window.linkPrePlanToPlanner = async function() {
     console.log('프리플랜 항목 수:', calendarData.results.length);
     console.log('플래너 항목 수:', currentData.results.length);
 
+    // 플래너 항목들 출력
+    console.log('\n--- 플래너 항목 목록 ---');
+    currentData.results.forEach(item => {
+      const title = getTaskTitle(item);
+      const bookId = item.properties?.['책']?.relation?.[0]?.id;
+      console.log(`플래너: "${title}", 책 ID: ${bookId || '없음'}`);
+    });
+    console.log('--- 플래너 항목 목록 끝 ---\n');
+
     let linkCount = 0;
 
     // 프리플랜 항목들을 순회
