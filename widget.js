@@ -2120,89 +2120,54 @@ function updateLastUpdateTime() {
     now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }
 
-window.linkPrePlanToPlanner = async function() {
-  const loading = document.getElementById('loading');
-  loading.textContent = '⏳';
+// 프리플랜과 플래너 항목들을 연결하는 헬퍼 함수 (UI 없이)
+async function linkPrePlanToPlannerSilent() {
+  if (!calendarData || !currentData) {
+    return 0;
+  }
 
-  try {
-    // 프리플랜과 플래너 데이터가 모두 있는지 확인
-    if (!calendarData || !currentData) {
-      alert('데이터가 로드되지 않았습니다.');
-      loading.textContent = '';
-      return;
+  let linkCount = 0;
+
+  // 프리플랜 항목들을 순회
+  for (const prePlanItem of calendarData.results) {
+    const prePlanTitle = getCalendarItemTitle(prePlanItem);
+    const prePlanBookId = prePlanItem.properties?.['책']?.relation?.[0]?.id;
+
+    // 책이 없으면 스킵
+    if (!prePlanBookId) {
+      continue;
     }
 
-    console.log('=== 관계형 연결 시작 ===');
-    console.log('프리플랜 항목 수:', calendarData.results.length);
-    console.log('플래너 항목 수:', currentData.results.length);
-
-    // 플래너 항목들 출력
-    console.log('\n--- 플래너 항목 목록 ---');
-    currentData.results.forEach(item => {
-      const title = getTaskTitle(item);
-      const bookId = item.properties?.['책']?.relation?.[0]?.id;
-      console.log(`플래너: "${title}", 책 ID: ${bookId || '없음'}`);
+    // 같은 책을 가진 플래너 항목들 중에서 제목이 같은 항목 찾기
+    const matchingPlannerItem = currentData.results.find(plannerItem => {
+      const plannerScope = plannerItem.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
+      const plannerBookId = plannerItem.properties?.['책']?.relation?.[0]?.id;
+      return plannerScope === prePlanTitle && plannerBookId === prePlanBookId;
     });
-    console.log('--- 플래너 항목 목록 끝 ---\n');
 
-    let linkCount = 0;
-
-    // 프리플랜 항목들을 순회
-    for (const prePlanItem of calendarData.results) {
-      const prePlanTitle = getCalendarItemTitle(prePlanItem);
-
-      // 프리플랜의 책 ID 가져오기
-      const prePlanBookId = prePlanItem.properties?.['책']?.relation?.[0]?.id;
-
-      console.log(`프리플랜: "${prePlanTitle}", 책 ID: ${prePlanBookId || '없음'}`);
-
-      // 책이 없으면 스킵
-      if (!prePlanBookId) {
-        console.log('  -> 책 없어서 스킵');
-        continue;
-      }
-
-      // 같은 책을 가진 플래너 항목들 중에서 제목이 같은 항목 찾기
-      const matchingPlannerItem = currentData.results.find(plannerItem => {
-        // 플래너의 순수 제목 (책 이름 제외)
-        const plannerScope = plannerItem.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
-        const plannerBookId = plannerItem.properties?.['책']?.relation?.[0]?.id;
-
-        // 제목과 책이 모두 같아야 함
-        return plannerScope === prePlanTitle && plannerBookId === prePlanBookId;
+    if (matchingPlannerItem) {
+      // 프리플랜의 PLANNER 속성에 플래너 항목 연결
+      const prePlanUpdateUrl = `https://api.notion.com/v1/pages/${prePlanItem.id}`;
+      await fetch(`${CORS_PROXY}${encodeURIComponent(prePlanUpdateUrl)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          properties: {
+            'PLANNER': {
+              relation: [{ id: matchingPlannerItem.id }]
+            }
+          }
+        })
       });
 
-      if (matchingPlannerItem) {
-        console.log(`  -> 매칭 성공! 플래너 항목: "${getTaskTitle(matchingPlannerItem)}"`);
-
-        // 프리플랜의 PLANNER 속성에 플래너 항목 연결
-        const prePlanUpdateUrl = `https://api.notion.com/v1/pages/${prePlanItem.id}`;
-        const res1 = await fetch(`${CORS_PROXY}${encodeURIComponent(prePlanUpdateUrl)}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${NOTION_API_KEY}`,
-            'Notion-Version': '2022-06-28',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            properties: {
-              'PLANNER': {
-                relation: [{ id: matchingPlannerItem.id }]
-              }
-            }
-          })
-        });
-
-        if (!res1.ok) {
-          const error = await res1.json();
-          console.error('프리플랜 업데이트 실패:', error);
-        } else {
-          console.log('  -> 프리플랜 PLANNER 속성 업데이트 성공');
-        }
-
-        // 플래너의 PRE-PLAN 속성에 프리플랜 항목 연결
+      // 플래너의 PRE-PLAN 속성에 프리플랜 항목 연결 (속성이 없을 수 있으므로 에러 무시)
+      try {
         const plannerUpdateUrl = `https://api.notion.com/v1/pages/${matchingPlannerItem.id}`;
-        const res2 = await fetch(`${CORS_PROXY}${encodeURIComponent(plannerUpdateUrl)}`, {
+        await fetch(`${CORS_PROXY}${encodeURIComponent(plannerUpdateUrl)}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${NOTION_API_KEY}`,
@@ -2217,21 +2182,29 @@ window.linkPrePlanToPlanner = async function() {
             }
           })
         });
-
-        if (!res2.ok) {
-          const error = await res2.json();
-          console.error('플래너 업데이트 실패:', error);
-        } else {
-          console.log('  -> 플래너 PRE-PLAN 속성 업데이트 성공');
-        }
-
-        linkCount++;
-      } else {
-        console.log('  -> 매칭 실패 (같은 책의 같은 제목 항목 없음)');
+      } catch (e) {
+        // PRE-PLAN 속성이 없는 경우 무시
       }
+
+      linkCount++;
+    }
+  }
+
+  return linkCount;
+}
+
+window.linkPrePlanToPlanner = async function() {
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    if (!calendarData || !currentData) {
+      alert('데이터가 로드되지 않았습니다.');
+      loading.textContent = '';
+      return;
     }
 
-    console.log(`=== 총 ${linkCount}개 연결 완료 ===`);
+    const linkCount = await linkPrePlanToPlannerSilent();
     alert(`${linkCount}개 항목 연결 완료`);
 
     // 데이터 새로고침
@@ -2239,7 +2212,6 @@ window.linkPrePlanToPlanner = async function() {
     await fetchAllData();
     renderCalendarView();
   } catch (error) {
-    console.error('연결 실패:', error);
     alert(`연결 실패: ${error.message}`);
   } finally {
     loading.textContent = '';
@@ -2549,6 +2521,8 @@ window.saveToPlanner = async function(dateStr) {
 
     // alert 없이 바로 새로고침
     await fetchAllData();
+    // 프리플랜-플래너 자동 연결
+    await linkPrePlanToPlannerSilent();
   } catch (error) {
     console.error('Save error:', error);
   } finally {
@@ -2621,6 +2595,8 @@ window.saveAllToPlanner = async function() {
 
     // alert 없이 바로 새로고침
     await fetchAllData();
+    // 프리플랜-플래너 자동 연결
+    await linkPrePlanToPlannerSilent();
   } catch (error) {
     console.error('Save all error:', error);
   } finally {
@@ -2819,6 +2795,8 @@ window.syncPlannerToCalendar = async function() {
 
     // alert 없이 바로 새로고침
     await fetchCalendarData();
+    // 프리플랜-플래너 자동 연결
+    await linkPrePlanToPlannerSilent();
     renderCalendarView();
   } catch (error) {
     console.error('Sync error:', error);
@@ -2869,7 +2847,6 @@ function renderCalendarView() {
 
   let html = `
     <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; gap: 4px;">
-      <button onclick="linkPrePlanToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜-플래너 연결">🔗</button>
       <button onclick="syncPlannerToCalendar()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
       <button onclick="saveAllToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜 → 플래너">💾</button>
     </div>
