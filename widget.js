@@ -2164,11 +2164,12 @@ window.linkPrePlanToPlanner = async function() {
 
       // 같은 책을 가진 플래너 항목들 중에서 제목이 같은 항목 찾기
       const matchingPlannerItem = currentData.results.find(plannerItem => {
-        const plannerTitle = getTaskTitle(plannerItem);
+        // 플래너의 순수 제목 (책 이름 제외)
+        const plannerScope = plannerItem.properties?.['범위']?.title?.[0]?.plain_text || '제목 없음';
         const plannerBookId = plannerItem.properties?.['책']?.relation?.[0]?.id;
 
         // 제목과 책이 모두 같아야 함
-        return plannerTitle === prePlanTitle && plannerBookId === prePlanBookId;
+        return plannerScope === prePlanTitle && plannerBookId === prePlanBookId;
       });
 
       if (matchingPlannerItem) {
