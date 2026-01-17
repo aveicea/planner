@@ -17,6 +17,18 @@ let calendarEndDate = new Date();
 let lastSyncedItems = []; // 마지막 동기화로 생성된 항목 ID들
 let dDayDate = localStorage.getItem('dDayDate') || null; // D-Day 날짜
 let dDayTitle = localStorage.getItem('dDayTitle') || null; // D-Day 제목
+let refreshTimer = null; // 디바운스용 타이머
+
+// 디바운스된 새로고침 함수
+function scheduleRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+  }
+  refreshTimer = setTimeout(() => {
+    fetchAllData();
+    refreshTimer = null;
+  }, 2000); // 2초 후 새로고침
+}
 
 // 전역 함수 등록
 window.changeDate = function(days) {
@@ -636,7 +648,7 @@ window.duplicateTask = async function(taskId) {
       })
     });
 
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('복제 실패:', error);
     loading.textContent = '';
@@ -704,7 +716,7 @@ window.confirmEditTask = async function(taskId) {
       }
 
       await updateNotionPage(taskId, properties);
-      setTimeout(() => fetchAllData(), 500);
+      scheduleRefresh();
     } catch (error) {
       console.error('수정 실패:', error);
       loading.textContent = '';
@@ -737,7 +749,7 @@ window.deleteTask = async function(taskId) {
 
       if (!response.ok) throw new Error('삭제 실패');
 
-      setTimeout(() => fetchAllData(), 500);
+      scheduleRefresh();
     } catch (error) {
       console.error('삭제 실패:', error);
       loading.textContent = '';
@@ -861,7 +873,7 @@ window.confirmAddTask = async function() {
       throw new Error(result.message || '추가 실패');
     }
     
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('할 일 추가 오류:', error);
   } finally {
@@ -891,7 +903,7 @@ window.toggleComplete = async function(taskId, completed) {
     await updateNotionPage(taskId, {
       '완료': { checkbox: completed }
     });
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('업데이트 실패:', error);
     // 실패시 롤백
@@ -969,7 +981,7 @@ window.updateTime = async function(taskId, field, value, inputElement) {
         rich_text: [{ type: 'text', text: { content: formattedValue } }]
       }
     });
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('시간 업데이트 실패:', error);
     // 실패시 롤백
@@ -1082,7 +1094,7 @@ window.updateDate = async function(taskId, newDate) {
 
     if (!response.ok) throw new Error('복제 실패');
 
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('날짜 변경 실패:', error);
     // 실패시 임시 항목 제거
@@ -1117,7 +1129,7 @@ window.updateTargetTimeInTask = async function(taskId, newTime) {
       '목표 시간': { number: timeValue }
     });
 
-    await fetchAllData();
+    scheduleRefresh();
   } catch (error) {
     console.error('목표 시간 업데이트 실패:', error);
     // 실패시 롤백
@@ -1225,7 +1237,7 @@ window.updateDateInTask = async function(taskId, newDate) {
 
     if (!response.ok) throw new Error('복제 실패');
 
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('날짜 변경 실패:', error);
     // 실패시 임시 항목 제거
@@ -1253,7 +1265,7 @@ window.updateRating = async function(taskId, value) {
     await updateNotionPage(taskId, {
       '(੭•̀ᴗ•̀)੭': value ? { select: { name: value } } : { select: null }
     });
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('집중도 업데이트 실패:', error);
     // 실패시 롤백
@@ -1899,7 +1911,7 @@ function initSortable() {
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        setTimeout(() => fetchAllData(), 500);
+        scheduleRefresh();
       }
     });
 
@@ -1940,7 +1952,7 @@ function initSortable() {
 
         if (dragStartIndex !== dragEndIndex) {
           await updateTaskOrder();
-          setTimeout(() => fetchAllData(), 500);
+          scheduleRefresh();
         }
 
         draggedItem = null;
@@ -1978,7 +1990,7 @@ function initSortable() {
 
       if (dragStartIndex !== dragEndIndex) {
         await updateTaskOrder();
-        setTimeout(() => fetchAllData(), 500);
+        scheduleRefresh();
       }
 
       draggedItem = null;
@@ -2279,7 +2291,7 @@ window.duplicateAllIncompleteTasks = async function() {
       });
     }
 
-    setTimeout(() => fetchAllData(), 500);
+    scheduleRefresh();
   } catch (error) {
     console.error('전체 복제 실패:', error);
     loading.textContent = '';
