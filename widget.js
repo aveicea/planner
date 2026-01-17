@@ -2108,6 +2108,81 @@ function updateLastUpdateTime() {
     now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 }
 
+window.linkPrePlanToPlanner = async function() {
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    // 프리플랜과 플래너 데이터가 모두 있는지 확인
+    if (!calendarData || !currentData) {
+      loading.textContent = '';
+      return;
+    }
+
+    let linkCount = 0;
+
+    // 프리플랜 항목들을 순회
+    for (const prePlanItem of calendarData.results) {
+      const prePlanTitle = getCalendarItemTitle(prePlanItem);
+
+      // 같은 제목을 가진 플래너 항목 찾기
+      const matchingPlannerItem = currentData.results.find(plannerItem => {
+        const plannerTitle = getTaskTitle(plannerItem);
+        return plannerTitle === prePlanTitle;
+      });
+
+      if (matchingPlannerItem) {
+        // 프리플랜의 PLANNER 속성에 플래너 항목 연결
+        const prePlanUpdateUrl = `https://api.notion.com/v1/pages/${prePlanItem.id}`;
+        await fetch(`${CORS_PROXY}${encodeURIComponent(prePlanUpdateUrl)}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${NOTION_API_KEY}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            properties: {
+              'PLANNER': {
+                relation: [{ id: matchingPlannerItem.id }]
+              }
+            }
+          })
+        });
+
+        // 플래너의 PRE-PLAN 속성에 프리플랜 항목 연결
+        const plannerUpdateUrl = `https://api.notion.com/v1/pages/${matchingPlannerItem.id}`;
+        await fetch(`${CORS_PROXY}${encodeURIComponent(plannerUpdateUrl)}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${NOTION_API_KEY}`,
+            'Notion-Version': '2022-06-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            properties: {
+              'PRE-PLAN': {
+                relation: [{ id: prePlanItem.id }]
+              }
+            }
+          })
+        });
+
+        linkCount++;
+      }
+    }
+
+    // 데이터 새로고침
+    await fetchCalendarData();
+    await fetchAllData();
+    renderCalendarView();
+  } catch (error) {
+    console.error('연결 실패:', error);
+  } finally {
+    loading.textContent = '';
+  }
+};
+
 window.duplicateAllIncompleteTasks = async function() {
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
@@ -2731,6 +2806,7 @@ function renderCalendarView() {
 
   let html = `
     <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; gap: 4px;">
+      <button onclick="linkPrePlanToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜-플래너 연결">🔗</button>
       <button onclick="syncPlannerToCalendar()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="플래너 동기화">🔄</button>
       <button onclick="saveAllToPlanner()" style="font-size: 14px; padding: 2px; background: none; border: none; cursor: pointer;" title="프리플랜 → 플래너">💾</button>
     </div>
@@ -2767,7 +2843,20 @@ function renderCalendarView() {
         const bookRelation = item.properties?.['책']?.relation?.[0];
         const bookName = bookRelation && bookNames[bookRelation.id] ? bookNames[bookRelation.id] : '';
         const displayTitle = bookName ? `[${bookName}] ${title}` : title;
-        const completed = item.properties?.['완료']?.checkbox || false;
+
+        // 롤업에서 플래너의 완료 상태 가져오기 (여러 가능한 속성 이름 시도)
+        let completed = false;
+        const rollupProp = item.properties?.['완료']?.rollup;
+        if (rollupProp) {
+          // 배열 타입 롤업
+          if (rollupProp.array && rollupProp.array.length > 0) {
+            completed = rollupProp.array[0]?.checkbox || false;
+          }
+          // 숫자 타입 롤업 (1이면 완료)
+          else if (rollupProp.number !== undefined) {
+            completed = rollupProp.number > 0;
+          }
+        }
 
         html += `
           <div class="calendar-item" data-id="${item.id}" data-date="${dateStr}" style="position: relative; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
