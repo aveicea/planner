@@ -27,7 +27,7 @@ function scheduleRefresh() {
   refreshTimer = setTimeout(() => {
     fetchAllData();
     refreshTimer = null;
-  }, 2000); // 2초 후 새로고침
+  }, 500); // 0.5초 후 새로고침
 }
 
 // 전역 함수 등록
@@ -2948,6 +2948,60 @@ function initCalendarDragDrop() {
   let draggedItem = null;
   let touchStartY = 0;
   let touchCurrentY = 0;
+  let isMouseDragging = false;
+
+  // 마우스 이벤트는 document 레벨에서 한 번만 등록
+  const handleMouseMove = (e) => {
+    if (!isMouseDragging || !draggedItem) return;
+
+    // 마우스 위치에 있는 그룹 찾기
+    const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
+    const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+    // 모든 그룹 하이라이트 제거
+    groups.forEach(g => g.style.background = 'transparent');
+
+    // 현재 그룹 하이라이트
+    if (targetGroup) {
+      targetGroup.style.background = '#f0f0f0';
+    }
+  };
+
+  const handleMouseUp = (e) => {
+    if (!isMouseDragging) return;
+    isMouseDragging = false;
+
+    if (draggedItem) {
+      draggedItem.style.opacity = '1';
+      draggedItem.style.position = '';
+      draggedItem.style.zIndex = '';
+
+      // 마우스 종료 위치의 그룹 찾기
+      const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
+      const targetGroup = touchedElement?.closest('.calendar-date-group');
+
+      if (targetGroup && draggedItem) {
+        const newDate = targetGroup.getAttribute('data-date');
+        const itemId = draggedItem.getAttribute('data-id');
+
+        draggedItem.setAttribute('data-date', newDate);
+        targetGroup.appendChild(draggedItem);
+
+        updateCalendarItemDate(itemId, newDate);
+      }
+
+      // 모든 그룹 하이라이트 제거
+      groups.forEach(g => g.style.background = 'transparent');
+
+      draggedItem = null;
+    }
+  };
+
+  // 기존 리스너 제거 후 새로 등록
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', handleMouseUp);
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
 
   items.forEach(item => {
     const handle = item.querySelector('.drag-handle');
@@ -2966,8 +3020,6 @@ function initCalendarDragDrop() {
     });
 
     // 마우스 드래그 (아이패드 마우스 포함)
-    let isMouseDragging = false;
-
     handle.addEventListener('mousedown', (e) => {
       isMouseDragging = true;
       draggedItem = item;
@@ -2975,52 +3027,6 @@ function initCalendarDragDrop() {
       item.style.position = 'relative';
       item.style.zIndex = '1000';
       e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isMouseDragging || !draggedItem) return;
-
-      // 마우스 위치에 있는 그룹 찾기
-      const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
-      const targetGroup = touchedElement?.closest('.calendar-date-group');
-
-      // 모든 그룹 하이라이트 제거
-      groups.forEach(g => g.style.background = 'transparent');
-
-      // 현재 그룹 하이라이트
-      if (targetGroup) {
-        targetGroup.style.background = '#f0f0f0';
-      }
-    });
-
-    document.addEventListener('mouseup', (e) => {
-      if (!isMouseDragging) return;
-      isMouseDragging = false;
-
-      if (draggedItem) {
-        item.style.opacity = '1';
-        item.style.position = '';
-        item.style.zIndex = '';
-
-        // 마우스 종료 위치의 그룹 찾기
-        const touchedElement = document.elementFromPoint(e.clientX, e.clientY);
-        const targetGroup = touchedElement?.closest('.calendar-date-group');
-
-        if (targetGroup && draggedItem) {
-          const newDate = targetGroup.getAttribute('data-date');
-          const itemId = draggedItem.getAttribute('data-id');
-
-          draggedItem.setAttribute('data-date', newDate);
-          targetGroup.appendChild(draggedItem);
-
-          updateCalendarItemDate(itemId, newDate);
-        }
-
-        // 모든 그룹 하이라이트 제거
-        groups.forEach(g => g.style.background = 'transparent');
-
-        draggedItem = null;
-      }
     });
 
     // 모바일 터치 드래그
