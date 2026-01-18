@@ -3062,7 +3062,7 @@ function renderCalendarView() {
     if (items.length === 0) {
       html += `<div style="font-size: 11px; color: #999; padding: 8px;">일정 없음</div>`;
     } else {
-      // 책이름 + 제목으로 가나다순 정렬
+      // 책이름으로 먼저 정렬, 같은 책 안에서 제목으로 정렬 (숫자는 자연스럽게)
       const sortedItems = items.sort((a, b) => {
         const titleA = getCalendarItemTitle(a);
         const titleB = getCalendarItemTitle(b);
@@ -3070,9 +3070,13 @@ function renderCalendarView() {
         const bookRelationB = b.properties?.['책']?.relation?.[0];
         const bookNameA = bookRelationA && bookNames[bookRelationA.id] ? bookNames[bookRelationA.id] : '';
         const bookNameB = bookRelationB && bookNames[bookRelationB.id] ? bookNames[bookRelationB.id] : '';
-        const displayTitleA = bookNameA ? `[${bookNameA}] ${titleA}` : titleA;
-        const displayTitleB = bookNameB ? `[${bookNameB}] ${titleB}` : titleB;
-        return displayTitleA.localeCompare(displayTitleB, 'ko');
+
+        // 1. 먼저 책 이름으로 정렬
+        const bookCompare = bookNameA.localeCompare(bookNameB, 'ko', { numeric: true });
+        if (bookCompare !== 0) return bookCompare;
+
+        // 2. 같은 책이면 제목으로 정렬 (숫자 자연스럽게)
+        return titleA.localeCompare(titleB, 'ko', { numeric: true });
       });
 
       sortedItems.forEach(item => {
