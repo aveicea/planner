@@ -18,6 +18,132 @@ let lastSyncedItems = []; // 마지막 동기화로 생성된 항목 ID들
 let dDayDate = localStorage.getItem('dDayDate') || null; // D-Day 날짜
 let dDayTitle = localStorage.getItem('dDayTitle') || null; // D-Day 제목
 let refreshTimer = null; // 디바운스용 타이머
+let undoStack = []; // 실행 취소 스택
+let redoStack = []; // 다시 실행 스택
+const MAX_HISTORY = 50; // 최대 히스토리 개수
+
+// 히스토리에 작업 추가
+function addToHistory(action) {
+  undoStack.push(action);
+  if (undoStack.length > MAX_HISTORY) {
+    undoStack.shift(); // 오래된 항목 제거
+  }
+  redoStack = []; // 새 작업이 추가되면 redo 스택 초기화
+}
+
+// 실행 취소
+async function undo() {
+  if (undoStack.length === 0) return;
+
+  const action = undoStack.pop();
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    if (action.type === 'UPDATE') {
+      // 이전 상태로 복원
+      await updateNotionPage(action.itemId, action.before);
+      redoStack.push(action);
+    } else if (action.type === 'DELETE') {
+      // 삭제된 항목 다시 생성
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent('https://api.notion.com/v1/pages')}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          parent: { database_id: action.databaseId },
+          properties: action.before
+        })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        redoStack.push({...action, itemId: result.id}); // 새로운 ID로 저장
+      }
+    } else if (action.type === 'CREATE') {
+      // 생성된 항목 삭제
+      await fetch(`${CORS_PROXY}${encodeURIComponent(`https://api.notion.com/v1/pages/${action.itemId}`)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ archived: true })
+      });
+      redoStack.push(action);
+    }
+
+    await fetchAllData();
+    if (calendarViewMode) {
+      await fetchCalendarData();
+      renderCalendarView();
+    }
+  } catch (error) {
+    console.error('Undo failed:', error);
+  } finally {
+    loading.textContent = '';
+  }
+}
+
+// 다시 실행
+async function redo() {
+  if (redoStack.length === 0) return;
+
+  const action = redoStack.pop();
+  const loading = document.getElementById('loading');
+  loading.textContent = '⏳';
+
+  try {
+    if (action.type === 'UPDATE') {
+      // 이후 상태로 복원
+      await updateNotionPage(action.itemId, action.after);
+      undoStack.push(action);
+    } else if (action.type === 'DELETE') {
+      // 다시 삭제
+      await fetch(`${CORS_PROXY}${encodeURIComponent(`https://api.notion.com/v1/pages/${action.itemId}`)}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ archived: true })
+      });
+      undoStack.push(action);
+    } else if (action.type === 'CREATE') {
+      // 다시 생성
+      const response = await fetch(`${CORS_PROXY}${encodeURIComponent('https://api.notion.com/v1/pages')}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          parent: { database_id: action.databaseId },
+          properties: action.after
+        })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        undoStack.push({...action, itemId: result.id});
+      }
+    }
+
+    await fetchAllData();
+    if (calendarViewMode) {
+      await fetchCalendarData();
+      renderCalendarView();
+    }
+  } catch (error) {
+    console.error('Redo failed:', error);
+  } finally {
+    loading.textContent = '';
+  }
+}
 
 // 디바운스된 새로고침 함수
 function scheduleRefresh() {
@@ -735,8 +861,19 @@ window.confirmEditTask = async function(taskId) {
 };
 
 window.deleteTask = async function(taskId) {
+  const task = currentData.results.find(t => t.id === taskId);
+  if (!task) return;
+
   const loading = document.getElementById('loading');
   loading.textContent = '⏳';
+
+  // 히스토리에 추가 (삭제 전 상태 저장)
+  addToHistory({
+    type: 'DELETE',
+    itemId: taskId,
+    databaseId: DATABASE_ID,
+    before: task.properties
+  });
 
   // 바로 창 닫기
   renderData();
@@ -903,6 +1040,14 @@ window.toggleComplete = async function(taskId, completed) {
   const task = currentData.results.find(t => t.id === taskId);
   if (!task) return;
   const originalCompleted = task.properties['완료'].checkbox;
+
+  // 히스토리에 추가
+  addToHistory({
+    type: 'UPDATE',
+    itemId: taskId,
+    before: { '완료': { checkbox: originalCompleted } },
+    after: { '완료': { checkbox: completed } }
+  });
 
   // UI 즉시 업데이트
   task.properties['완료'].checkbox = completed;
@@ -1329,6 +1474,22 @@ function setupEventListeners() {
       viewMode = viewMode === 'timeline' ? 'task' : 'timeline';
       viewToggle.textContent = viewMode === 'timeline' ? 'TIME TABLE' : 'TASK';
       renderData();
+    }
+  });
+
+  // 키보드 단축키: Ctrl+Z (undo), Ctrl+Shift+Z (redo)
+  document.addEventListener('keydown', (e) => {
+    // 입력 필드에서는 단축키 무시
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') {
+      e.preventDefault();
+      redo();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      undo();
     }
   });
 }
@@ -2433,6 +2594,16 @@ async function fetchDDayData() {
 window.updateCalendarItemDate = async function(itemId, newDate) {
   const item = calendarData.results.find(t => t.id === itemId);
   if (item && item.properties?.['날짜']) {
+    const oldDate = item.properties['날짜'].date?.start;
+
+    // 히스토리에 추가
+    addToHistory({
+      type: 'UPDATE',
+      itemId: itemId,
+      before: { '날짜': { date: { start: oldDate } } },
+      after: { '날짜': { date: { start: newDate } } }
+    });
+
     item.properties['날짜'].date = { start: newDate };
 
     // 노션에 실제로 날짜 업데이트
@@ -2891,7 +3062,7 @@ function renderCalendarView() {
     if (items.length === 0) {
       html += `<div style="font-size: 11px; color: #999; padding: 8px;">일정 없음</div>`;
     } else {
-      // 책이름 + 제목으로 가나다순 정렬
+      // 책이름으로 먼저 정렬, 같은 책 안에서 제목으로 정렬 (숫자는 자연스럽게)
       const sortedItems = items.sort((a, b) => {
         const titleA = getCalendarItemTitle(a);
         const titleB = getCalendarItemTitle(b);
@@ -2899,9 +3070,13 @@ function renderCalendarView() {
         const bookRelationB = b.properties?.['책']?.relation?.[0];
         const bookNameA = bookRelationA && bookNames[bookRelationA.id] ? bookNames[bookRelationA.id] : '';
         const bookNameB = bookRelationB && bookNames[bookRelationB.id] ? bookNames[bookRelationB.id] : '';
-        const displayTitleA = bookNameA ? `[${bookNameA}] ${titleA}` : titleA;
-        const displayTitleB = bookNameB ? `[${bookNameB}] ${titleB}` : titleB;
-        return displayTitleA.localeCompare(displayTitleB, 'ko');
+
+        // 1. 먼저 책 이름으로 정렬
+        const bookCompare = bookNameA.localeCompare(bookNameB, 'ko', { numeric: true });
+        if (bookCompare !== 0) return bookCompare;
+
+        // 2. 같은 책이면 제목으로 정렬 (숫자 자연스럽게)
+        return titleA.localeCompare(titleB, 'ko', { numeric: true });
       });
 
       sortedItems.forEach(item => {
