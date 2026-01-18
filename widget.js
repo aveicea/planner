@@ -1447,8 +1447,12 @@ async function fetchAllData() {
     // 책 이름 불러오기
     await fetchBookNames();
 
-    // 재렌더링
-    renderData();
+    // 재렌더링 - 현재 뷰 모드에 맞게 렌더링
+    if (calendarViewMode) {
+      renderCalendarView();
+    } else {
+      renderData();
+    }
   } catch (error) {
     console.error('전체 데이터 로드 실패:', error);
   }
